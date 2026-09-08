@@ -136,6 +136,7 @@ js/minhocas/turn.js          máquina de turnos           (puro, testado)
 js/minhocas/weapons.js       a tabela de armas           (dados, testado)
 js/minhocas/projectile.js    execução dos tipos de arma
 js/minhocas/match.js         junta tudo: mundo, equipes, regras
+js/minhocas/ai.js            adversário de IA: mira, decide, joga sozinho (testado)
 js/minhocas/ui/hud.js        HUD no canvas
 js/minhocas/ui/screens.js    menu, pausa e fim de partida, no DOM
 js/minhocas/ui/controls.js   botões de toque, no DOM (teclas virtuais)
@@ -151,10 +152,32 @@ Cobrem o gerador com semente, as primitivas da máscara, a geração do mapa, a
 balística (inclusive o projétil rápido que não pode atravessar parede nem
 atravessar uma minhoca no ar), a curva de dano, a tabela de armas, o
 movimento da minhoca, a corda ninja (empilhar e desempilhar pivô, balanço sem
-esticar) e a máquina de turnos inteira — tudo sem DOM e sem navegador.
+esticar), a máquina de turnos inteira e a IA (escolha de alvo, linha de
+visão, a busca que mira as armas de arco, e uma partida inteira jogada
+sozinha de ponta a ponta) — tudo sem DOM e sem navegador.
+
+## Adversários de IA
+
+Em "Quem joga", cada equipe é **Você** ou **IA** (Vermelhos começa com você,
+o resto como IA — jogar contra si mesmo não costuma ser o pedido de quem abre
+o menu sozinho). Muda a qualquer combinação, inclusive IA contra IA, pra
+assistir.
+
+Ela decide pelos mesmos `comandos` que um jogador usaria — nunca lê nem muda
+o estado do jogo por um atalho que um jogador não teria. Mira com bazuca,
+morteiro, granada, fragmentação, escopeta ou sniper: testa a linha reta para
+os hitscans e simula a trajetória (a mesma integração do projétil de
+verdade) para as armas de arco, com um pouco de erro de ângulo e força para
+não acertar toda vez. Anda alguns segundos para se aproximar quando o melhor
+tiro encontrado erraria feio e o alvo está longe — o suficiente para não
+travar contra um adversário fora de alcance, não para jogar com tática.
+
+**O que ela ainda não faz:** corda ninja, jetpack, teleporte, ovelha, míssil
+guiado, minas, dinamite e viga — só o arsenal com trajetória calculável. Não
+pula, não recua depois de atirar, não protege uma minhoca machucada, e pode
+andar para dentro de um buraco ou da água no caminho até o alvo.
 
 ## O que ainda não existe
 
-Falta o ataque aéreo, as caixas de paraquedas, a IA para jogar sozinho e os
-controles de toque. O desenho de cada um está em
+Falta o ataque aéreo e as caixas de paraquedas. O desenho de cada um está em
 [`docs/PLANO-TRINCHEIRA.md`](docs/PLANO-TRINCHEIRA.md).

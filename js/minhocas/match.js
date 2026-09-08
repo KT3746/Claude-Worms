@@ -86,6 +86,9 @@ export function createMatch({
       cores: Worm.coresDaEquipe(indice),
       minhocas,
       atual: -1,
+      // Time de mentira: joga sozinho pelo `ai.js`, sem teclado nem toque.
+      // Ver `criarAdversarioIA` em `ai.js` e a seleção na tela de configuração.
+      ia: cfg.ia === true,
       get vida() {
         return minhocas.reduce((s, w) => s + (w.vivo ? Math.max(0, w.vida) : 0), 0);
       },
@@ -1091,6 +1094,10 @@ export function createMatch({
     terreno,
     comandos,
     times,
+    todas,
+    // Exposto para `ai.js`: os adversários de IA usam a mesma semente, então
+    // uma partida com semente fixa joga sempre a mesma partida, IA incluída.
+    rng,
     update,
     desenhar,
     get FASE() {

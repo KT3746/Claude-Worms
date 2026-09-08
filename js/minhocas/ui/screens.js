@@ -7,6 +7,7 @@
 
 import { save } from '../../engine/storage.js';
 import { sfx } from '../../engine/audio.js';
+import { coresDaEquipe, NOMES_EQUIPE } from '../worm.js';
 
 export function createScreens(root, actions) {
   let current = null;
@@ -15,6 +16,11 @@ export function createScreens(root, actions) {
     minhocas: 4,
     tempoTurno: 45,
     semente: '',
+    // Um valor por equipe (só os `equipes` primeiros contam). Time 1 humano
+    // por padrão — ninguém abre o jogo e some sem escolher nada — o resto
+    // como adversário de IA, porque "jogar contra si mesmo" não é o pedido
+    // comum de quem abre o menu sozinho.
+    controladores: ['humano', 'ia', 'ia', 'ia'],
   };
 
   function clear() {
@@ -61,6 +67,7 @@ export function createScreens(root, actions) {
       box.append(
         seletor('Equipes', [2, 3, 4], config.equipes, (v) => {
           config.equipes = v;
+          screens.menu(); // o número de linhas de "Quem joga" abaixo depende disto
         }),
         seletor('Minhocas por equipe', [2, 3, 4, 6], config.minhocas, (v) => {
           config.minhocas = v;
@@ -69,6 +76,8 @@ export function createScreens(root, actions) {
           config.tempoTurno = v;
         }, (v) => `${v}s`),
       );
+
+      box.append(controladores(config));
 
       const campo = el('div', 'campo');
       const rotulo = el('label', 'campo-rotulo', 'Semente do mapa (opcional)');
@@ -250,6 +259,33 @@ function seletor(rotulo, opcoes, valor, onChange, formatar = String) {
 
   grupo.append(...botoes);
   wrap.append(grupo);
+  return wrap;
+}
+
+/**
+ * Uma linha "Humano/IA" por equipe — reaproveita `seletor()` (mesmo par de
+ * botões usado em "Equipes" e "Tempo de turno") e só decora o rótulo com a
+ * cor do time, pra ficar claro qual linha é qual antes mesmo de ler o nome.
+ */
+function controladores(config) {
+  const wrap = el('div', 'controladores');
+  wrap.append(el('span', 'seletor-rotulo', 'Quem joga'));
+
+  for (let i = 0; i < config.equipes; i += 1) {
+    const linha = seletor(
+      NOMES_EQUIPE[i],
+      ['humano', 'ia'],
+      config.controladores[i],
+      (v) => { config.controladores[i] = v; },
+      (v) => (v === 'ia' ? 'IA' : 'Você'),
+    );
+    const rotulo = linha.querySelector('.seletor-rotulo');
+    const bolinha = el('span', 'controlador-cor');
+    bolinha.style.background = coresDaEquipe(i).corpo;
+    rotulo.prepend(bolinha);
+    wrap.append(linha);
+  }
+
   return wrap;
 }
 

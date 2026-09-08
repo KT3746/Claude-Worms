@@ -163,6 +163,23 @@ html, body {
   color: var(--accent-ink);
 }
 
+/* -------------------------------------------------------- quem joga (IA) */
+
+.controladores {
+  margin: 14px 0 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--panel-border);
+}
+
+.controlador-cor {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 7px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
 /* ------------------------------------------------------------- campo texto */
 
 .campo {

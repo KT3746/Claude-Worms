@@ -121,11 +121,10 @@ function desenharRelogio(ctx, partida, l) {
   ctx.fillStyle = urgente ? '#ff6b5e' : '#f2f5f8';
   ctx.fillText(String(segundos).padStart(2, '0'), centro, y + 6);
 
+  const time = estado.ativa ? partida.times[estado.equipeDaVez] : null;
   ctx.font = '600 10px system-ui, sans-serif';
-  ctx.fillStyle = estado.ativa ? partida.times[estado.equipeDaVez].cores.corpo : '#9fb0c0';
-  const rotulo = estado.ativa
-    ? `${partida.times[estado.equipeDaVez].nome} · ${estado.ativa.nome}`
-    : '—';
+  ctx.fillStyle = time ? time.cores.corpo : '#9fb0c0';
+  const rotulo = time ? `${time.nome} · ${estado.ativa.nome}${time.ia ? ' · IA' : ''}` : '—';
   ctx.fillText(rotulo.toUpperCase(), centro, y + 31);
 }
 

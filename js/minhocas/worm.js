@@ -333,6 +333,13 @@ export function coresDaEquipe(indice) {
 }
 
 /**
+ * Nomes das equipes, na mesma ordem das cores acima — usados tanto ao montar
+ * a partida (`main.js`) quanto na tela de configuração (`ui/screens.js`),
+ * para as duas nunca ficarem fora de sincronia.
+ */
+export const NOMES_EQUIPE = ['Vermelhos', 'Azuis', 'Verdes', 'Roxos'];
+
+/**
  * Desenha a minhoca em vetor — sem sprite, como todo o resto do projeto.
  */
 export function desenharMinhoca(ctx, w, camera, { ativa = false, cores } = {}) {

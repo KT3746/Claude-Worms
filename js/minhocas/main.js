@@ -11,10 +11,12 @@ import { sfx } from '../engine/audio.js';
 import { hashSeed, randomSeed } from '../engine/rng.js';
 
 import { createMatch } from './match.js';
+import { createAiController } from './ai.js';
 import { DT_FISICA } from './ballistics.js';
 import { desenharHud, desenharDica } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
 import { createTouchControls } from './ui/controls.js';
+import { NOMES_EQUIPE } from './worm.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -25,6 +27,8 @@ const pauseButton = document.getElementById('pause-button');
 const camera = createCamera();
 const particles = createParticles();
 const input = createInput(canvas);
+/** Um controlador por partida — recriado a cada `iniciarPartida`. */
+let ia = null;
 
 const estado = {
   modo: 'menu', // 'menu' | 'jogando' | 'pausado' | 'fim'
@@ -88,9 +92,19 @@ window.addEventListener('pointerdown', (event) => {
   definirEntrada(event.pointerType === 'mouse' ? 'mouse' : 'dedo');
 }, { capture: true });
 
-/** Os botões da tela só existem durante o jogo, e só para quem joga no dedo. */
+/** É a vez de um time de IA jogar — ninguém deveria estar tocando em nada. */
+function vezDaIA() {
+  const partida = estado.partida;
+  return partida?.times[partida.estado.equipeDaVez]?.ia === true;
+}
+
+/**
+ * Os botões da tela só existem durante o jogo, para quem joga no dedo — e
+ * somem na vez de um time de IA, senão o polegar aparece livre pra atirar
+ * pela minhoca que não é sua.
+ */
 function sincronizarControles() {
-  const querido = estado.entrada === 'dedo' && estado.modo === 'jogando';
+  const querido = estado.entrada === 'dedo' && estado.modo === 'jogando' && !vezDaIA();
   if (querido === controles.visivel) return;
   if (querido) controles.mostrar();
   else controles.esconder();
@@ -125,9 +139,10 @@ function iniciarPartida(config) {
   sincronizarControles();
 
   requestAnimationFrame(() => setTimeout(() => {
-    const equipes = NOMES_DE_EQUIPE.slice(0, config.equipes).map((nome) => ({
+    const equipes = NOMES_EQUIPE.slice(0, config.equipes).map((nome, i) => ({
       nome,
       minhocas: config.minhocas,
+      ia: config.controladores[i] === 'ia',
     }));
 
     particles.clear();
@@ -139,14 +154,13 @@ function iniciarPartida(config) {
       motionEnabled: estado.motion,
       tempoTurno: config.tempoTurno,
     });
+    ia = createAiController(estado.partida);
     estado.modo = 'jogando';
     screens.hide();
     pauseButton.hidden = false;
     sincronizarControles();
   }, 0));
 }
-
-const NOMES_DE_EQUIPE = ['Vermelhos', 'Azuis', 'Verdes', 'Roxos'];
 
 function pausar() {
   if (estado.modo !== 'jogando') return;
@@ -197,7 +211,7 @@ pauseButton.addEventListener('click', () => {
 
 function comandosContinuos(dt) {
   const partida = estado.partida;
-  if (!partida) return;
+  if (!partida || vezDaIA()) return;
   const { comandos } = partida;
 
   if (input.isDown('ArrowLeft') || input.isDown('KeyA')) comandos.andar(-1, dt);
@@ -218,6 +232,8 @@ function comandosDiscretos() {
   if (estado.modo === 'jogando' && input.wasPressed('KeyP')) return pausar();
   if (estado.modo === 'pausado' && input.wasPressed('KeyP')) return retomar();
   if (estado.modo !== 'jogando' || !estado.partida) return;
+  // Pausar continua seu, mas mexer na minhoca que está jogando não — é a vez da IA.
+  if (vezDaIA()) return;
 
   const { comandos, estado: jogo } = estado.partida;
 
@@ -272,6 +288,11 @@ const loop = createLoop({
       return;
     }
     comandosContinuos(dt);
+    ia.update(dt);
+    // A vez muda no meio de uma partida em andamento (não só ao trocar de
+    // tela), então é aqui, não só nas transições de modo, que os botões de
+    // toque precisam reagir a "agora é a IA que joga".
+    sincronizarControles();
     estado.partida.update(dt);
     if (estado.partida.fimDeJogo) terminar();
   },
@@ -281,7 +302,12 @@ const loop = createLoop({
       estado.partida.desenhar(ctx);
       if (estado.modo === 'jogando' || estado.modo === 'pausado') {
         // Com os botões na tela o rodapé do HUD passaria por baixo deles.
-        const opcoes = { toque: controles.visivel, ...reservaDosControles() };
+        // O texto da dica descreve como VOCÊ jogaria, então segue
+        // `estado.entrada` — não `controles.visivel`, que também é `false`
+        // na vez da IA mesmo para quem está no dedo (e aí a dica de teclado
+        // não faria sentido nenhum). O layout, por outro lado, só precisa
+        // desviar do que está ocupando a tela agora.
+        const opcoes = { toque: estado.entrada === 'dedo', ...reservaDosControles() };
         desenharHud(ctx, estado.partida, camera, opcoes);
         if (estado.modo === 'jogando') desenharDica(ctx, estado.partida, camera, opcoes);
       }
