@@ -29,9 +29,15 @@ export function createInput(canvas) {
 
   function onUp(event) {
     positionFrom(event);
-    if (pointer.down) pointer.justReleased = true;
+    // `touchend`/`mouseup` escutam a janela inteira para não perder o dedo (ou
+    // o botão) que sai de cima do canvas no meio do gesto. Mas quem começou o
+    // toque num botão do menu não é do jogo: em toque, `preventDefault()` no
+    // `touchend` cancela o `click` sintetizado depois dele, e um toque em
+    // "Jogar" morria sem nunca virar clique.
+    const doJogo = pointer.down;
+    if (doJogo) pointer.justReleased = true;
     pointer.down = false;
-    if (event.cancelable) event.preventDefault();
+    if (doJogo && event.cancelable) event.preventDefault();
   }
 
   canvas.addEventListener('mousedown', onDown);
