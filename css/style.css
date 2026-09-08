@@ -1,0 +1,310 @@
+/* Minhocas — estilos da casca (canvas + telas de interface). */
+
+:root {
+  --ink: #f2f5f8;
+  --ink-soft: rgba(242, 245, 248, 0.72);
+  --panel: rgba(12, 22, 36, 0.86);
+  --panel-border: rgba(255, 255, 255, 0.14);
+  --accent: #ffd24a;
+  --accent-ink: #1b2432;
+  --terra: #96653e;
+  --radius: 14px;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0b1420;
+  color: var(--ink);
+  font-family: var(--font);
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app { position: relative; width: 100%; height: 100%; }
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* ------------------------------------------------------------- botão pausa */
+
+#pause-button {
+  position: absolute;
+  top: max(104px, env(safe-area-inset-top, 0px) + 104px);
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--panel-border);
+  background: rgba(14, 24, 38, 0.55);
+  color: var(--ink);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+#pause-button:hover { background: rgba(14, 24, 38, 0.8); }
+#pause-button[hidden] { display: none; }
+
+/* ------------------------------------------------------------------ telas */
+
+#ui {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(6, 12, 20, 0.6);
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
+}
+
+#ui[hidden] { display: none; }
+
+.panel {
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 26px 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: rise 0.22s ease-out;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+}
+
+.panel-title {
+  margin: 0 0 6px;
+  font-size: clamp(30px, 6vw, 44px);
+  letter-spacing: -0.02em;
+}
+
+.panel-subtitle {
+  margin: 0 0 20px;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.hint-text {
+  margin: 16px 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: left;
+}
+
+.stats {
+  margin: 14px 0 4px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+/* --------------------------------------------------------------- seletores */
+
+.seletor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.seletor-rotulo { font-size: 14px; color: var(--ink-soft); }
+
+.seletor-opcoes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.seletor-opcao {
+  min-width: 44px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.seletor-opcao:hover { background: rgba(255, 255, 255, 0.14); }
+
+.seletor-opcao.ativo {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* ------------------------------------------------------------- campo texto */
+
+.campo {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0 4px;
+  text-align: left;
+}
+
+.campo-rotulo { font-size: 13px; color: var(--ink-soft); }
+
+.campo-entrada {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  font: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.campo-entrada::placeholder { color: rgba(242, 245, 248, 0.4); }
+
+/* ------------------------------------------------------------ tabela ajuda */
+
+.tabela {
+  display: grid;
+  gap: 1px;
+  background: var(--panel-border);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.tabela-linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  background: rgba(12, 22, 36, 0.9);
+  font-size: 13.5px;
+}
+
+.tabela-acao { color: var(--ink-soft); }
+.tabela-tecla { font-weight: 600; text-align: right; }
+
+/* ----------------------------------------------------------------- placar */
+
+.placar {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+
+.placar-linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+}
+
+.placar-cor {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.placar-nome { font-weight: 600; }
+.placar-valor { margin-left: auto; color: var(--ink-soft); }
+
+/* ----------------------------------------------------------------- botões */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.secondary-actions { margin-top: 14px; }
+
+.btn {
+  min-height: 46px;
+  padding: 12px 22px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.btn:hover { background: rgba(255, 255, 255, 0.16); }
+.btn:active { transform: translateY(1px); }
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn.primary:hover { background: #ffe066; }
+
+.btn:focus-visible,
+.seletor-opcao:focus-visible,
+.campo-entrada:focus-visible,
+#pause-button:focus-visible {
+  outline: 3px solid #7ec8ff;
+  outline-offset: 2px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.toggle input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+
+.noscript {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #0b1420;
+  text-align: center;
+}

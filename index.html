@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1d3c63">
+  <meta name="description" content="Minhocas — jogo de artilharia por turnos com terreno destrutível, vento e explosões. Roda no navegador, sem instalar nada.">
+  <title>Minhocas — artilharia por turnos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231d3c63'/><path d='M7 24c0-6 4-6 4-11a4 4 0 1 1 8 0c0 5 6 4 6 11z' fill='%23e8534a'/><circle cx='13' cy='12' r='1.6' fill='%23fff'/><circle cx='18' cy='12' r='1.6' fill='%23fff'/></svg>">
+</head>
+<body>
+  <main id="app">
+    <canvas id="game" aria-label="Campo de batalha com terreno destrutível"></canvas>
+
+    <button id="pause-button" type="button" aria-label="Pausar" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+        <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"></rect>
+        <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"></rect>
+      </svg>
+    </button>
+
+    <div id="ui" hidden></div>
+
+    <noscript>
+      <p class="noscript">Este jogo precisa de JavaScript ativado.</p>
+    </noscript>
+  </main>
+
+  <script type="module" src="js/minhocas/main.js"></script>
+</body>
+</html>

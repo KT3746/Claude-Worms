@@ -1,0 +1,11 @@
+{
+  "name": "minhocas",
+  "version": "1.0.0",
+  "description": "Jogo de artilharia por turnos estilo Worms em HTML5 Canvas — sem build, sem dependências.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "start": "python3 -m http.server 8000"
+  }
+}
