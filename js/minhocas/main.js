@@ -14,10 +14,12 @@ import { createMatch } from './match.js';
 import { DT_FISICA } from './ballistics.js';
 import { desenharHud, desenharDica } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
+import { createTouchControls } from './ui/controls.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d', { alpha: false });
 const ui = document.getElementById('ui');
+const touch = document.getElementById('touch');
 const pauseButton = document.getElementById('pause-button');
 
 const camera = createCamera();
@@ -29,6 +31,8 @@ const estado = {
   partida: null,
   ultimaConfig: null,
   motion: true,
+  /** 'dedo' liga os botões da tela; 'mouse' os esconde. Ver `definirEntrada`. */
+  entrada: 'mouse',
 };
 
 save.load();
@@ -45,11 +49,51 @@ const screens = createScreens(ui, {
   resume: () => retomar(),
   toMenu: () => aoMenu(),
   setMotion: definirMotion,
+  usandoToque: () => estado.entrada === 'dedo',
 });
 
 function definirMotion(ligado) {
   estado.motion = ligado;
   camera.shakeEnabled = ligado;
+}
+
+// ------------------------------------------------------ dedo ou mouse
+
+const controles = createTouchControls(touch, {
+  input,
+  acoes: {
+    trocarArma: (id) => estado.partida?.comandos.trocarArma(id),
+    ajustarPavio: (n) => estado.partida?.comandos.ajustarPavio(n),
+  },
+});
+
+/**
+ * Quem manda é o último ponteiro usado, não o aparelho.
+ *
+ * `(pointer: coarse)` só serve de palpite inicial, para os botões já estarem
+ * lá no primeiro toque. Depois disso cada `pointerdown` decide: num notebook
+ * com tela sensível os botões aparecem quando o dedo encosta e somem quando a
+ * mão volta para o mouse, sem ninguém precisar configurar nada.
+ */
+function definirEntrada(tipo) {
+  if (tipo !== 'dedo' && tipo !== 'mouse') return;
+  if (estado.entrada === tipo) return;
+  estado.entrada = tipo;
+  sincronizarControles();
+}
+
+if (window.matchMedia?.('(pointer: coarse)').matches) estado.entrada = 'dedo';
+
+window.addEventListener('pointerdown', (event) => {
+  definirEntrada(event.pointerType === 'mouse' ? 'mouse' : 'dedo');
+}, { capture: true });
+
+/** Os botões da tela só existem durante o jogo, e só para quem joga no dedo. */
+function sincronizarControles() {
+  const querido = estado.entrada === 'dedo' && estado.modo === 'jogando';
+  if (querido === controles.visivel) return;
+  if (querido) controles.mostrar();
+  else controles.esconder();
 }
 
 // ------------------------------------------------------------------ tamanho
@@ -77,6 +121,8 @@ function iniciarPartida(config) {
   // de espera e só então trava a thread, senão o clique parece não responder.
   screens.carregando();
   pauseButton.hidden = true;
+  estado.modo = 'menu';
+  sincronizarControles();
 
   requestAnimationFrame(() => setTimeout(() => {
     const equipes = NOMES_DE_EQUIPE.slice(0, config.equipes).map((nome) => ({
@@ -96,6 +142,7 @@ function iniciarPartida(config) {
     estado.modo = 'jogando';
     screens.hide();
     pauseButton.hidden = false;
+    sincronizarControles();
   }, 0));
 }
 
@@ -105,6 +152,7 @@ function pausar() {
   if (estado.modo !== 'jogando') return;
   estado.modo = 'pausado';
   pauseButton.hidden = true;
+  sincronizarControles();
   screens.pause();
 }
 
@@ -113,11 +161,13 @@ function retomar() {
   estado.modo = 'jogando';
   pauseButton.hidden = false;
   screens.hide();
+  sincronizarControles();
 }
 
 function aoMenu() {
   estado.modo = 'menu';
   estado.partida = null;
+  sincronizarControles();
   particles.clear();
   camera.setBounds(null);
   pauseButton.hidden = true;
@@ -128,6 +178,7 @@ function terminar() {
   const partida = estado.partida;
   estado.modo = 'fim';
   pauseButton.hidden = true;
+  sincronizarControles();
   sfx.fanfare();
   screens.fim({
     vencedor: partida.estado.vencedor,
@@ -183,12 +234,27 @@ function comandosDiscretos() {
     }
   }
 
-  // Espaço e toque carregam a força; soltar dispara.
+  // Espaço (tecla de verdade ou botão FOGO) carrega a força; soltar dispara.
   if (input.wasPressed('Space')) comandos.carregar();
   if (!input.isDown('Space') && jogo.carregando) comandos.disparar();
 
-  if (input.pointer.justPressed) comandos.carregar();
-  if (input.pointer.justReleased) comandos.disparar();
+  // Arrastar pelo campo mira, e só. Atirar continua sendo Espaço ou FOGO.
+  //
+  // Antes o ponteiro carregava e disparava sozinho: como um clique humano
+  // dura uns 80 ms, a carga não saía do piso de 12% e o tiro explodia no pé
+  // da própria minhoca, gastando o turno. Mirar é o que o ponteiro faz bem —
+  // ele diz um ângulo inteiro de uma vez, coisa que a tecla leva segundos
+  // para alcançar —, e ninguém mais perde a vez por um toque errado.
+  //
+  // As bordas entram junto com o estado contínuo porque um toque rápido pode
+  // começar e acabar dentro do mesmo quadro: só olhar para `down` perderia o
+  // toque inteiro, e mirar tocando onde se quer acertar é o gesto mais óbvio
+  // que existe no dedo.
+  const { pointer } = input;
+  if (pointer.down || pointer.justPressed || pointer.justReleased) {
+    const alvo = camera.toWorld(pointer.x, pointer.y);
+    comandos.apontarPara(alvo.x, alvo.y);
+  }
 }
 
 // ------------------------------------------------------------------- loop
@@ -214,9 +280,12 @@ const loop = createLoop({
     if (estado.partida) {
       estado.partida.desenhar(ctx);
       if (estado.modo === 'jogando' || estado.modo === 'pausado') {
-        desenharHud(ctx, estado.partida, camera);
-        if (estado.modo === 'jogando') desenharDica(ctx, estado.partida, camera);
+        // Com os botões na tela o rodapé do HUD passaria por baixo deles.
+        const opcoes = { toque: controles.visivel, ...reservaDosControles() };
+        desenharHud(ctx, estado.partida, camera, opcoes);
+        if (estado.modo === 'jogando') desenharDica(ctx, estado.partida, camera, opcoes);
       }
+      controles.atualizar(estado.partida);
     } else {
       desenharFundoDoMenu();
     }
@@ -226,6 +295,24 @@ const loop = createLoop({
     input.endFrame();
   },
 });
+
+/**
+ * Quanto de tela os botões de toque ocupam, para o HUD desviar deles.
+ *
+ * Sai do tamanho de verdade dos elementos, e não de constantes repetidas
+ * aqui: os botões encolhem com a tela (`--tc` em `vmin`), e uma cópia do
+ * número ficaria errada em metade dos aparelhos.
+ */
+function reservaDosControles() {
+  if (!controles.visivel) return { reservaInferior: 0, reservaLateral: 0 };
+  const cruz = touch.querySelector('.tc-cruz')?.getBoundingClientRect();
+  const direita = touch.querySelector('.tc-direita')?.getBoundingClientRect();
+  if (!cruz || !direita) return { reservaInferior: 0, reservaLateral: 0 };
+  return {
+    reservaInferior: Math.max(cruz.height, direita.height) + 18,
+    reservaLateral: Math.max(cruz.width, direita.width) + 18,
+  };
+}
 
 /** Fundo tranquilo por trás do menu: um morro e o mar. */
 let tempoFundo = 0;

@@ -42,7 +42,9 @@ O Arqueiro já resolveu, e vamos reusar sem reescrever:
   qualquer FPS, tremida de impacto. Precisa ganhar limites de mapa e um modo
   "seguir projétil".
 - `js/engine/input.js` — ponteiro unificado mouse/toque + teclado com eventos de
-  borda. Precisa ganhar multitoque e gamepad.
+  borda, e teclas virtuais (`setVirtualKey`), por onde entram os botões de
+  tela: um dedo em cada botão vira multitoque via Pointer Events, em
+  `ui/controls.js`. Precisa ganhar gamepad.
 - `js/engine/particles.js` — pool fixo de 400 partículas, sem alocação por
   quadro. Vai subir para ~1500 e ganhar tipos (fumaça, detrito, faísca, água).
 - `js/engine/audio.js` — síntese WebAudio, contexto criado no primeiro gesto.
@@ -369,7 +371,9 @@ js/trincheira/
   ai.js                      solução de tiro e decisão       (puro, testado)
   replay.js                  gravação e reprodução de comandos
   match.js                   junta tudo: mundo, equipes, regras
-  ui/hud.js, ui/screens.js   HUD no canvas, telas no DOM
+  ui/hud.js                  HUD no canvas
+  ui/screens.js              menu, pausa e fim, no DOM
+  ui/controls.js             botões de toque, no DOM
   main.js                    liga canvas, entrada, loop, telas
 tests/                       um arquivo por módulo puro
 docs/PLANO-TRINCHEIRA.md     este documento

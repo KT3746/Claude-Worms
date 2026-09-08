@@ -183,6 +183,7 @@ export const ARMAS = [
     comprimentoMax: 45,
     comprimentoMin: 1.5,
     dica: 'Mira numa saliência e atira. Espaço de novo solta. ↑ ↓ encolhem e alongam.',
+    dicaToque: 'Mira numa saliência e toque FOGO. FOGO de novo solta. ▲ ▼ encolhem e alongam.',
   },
   {
     id: 'jetpack',

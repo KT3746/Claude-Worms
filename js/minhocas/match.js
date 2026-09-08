@@ -381,6 +381,30 @@ export function createMatch({
       estado.ativa.direcao = dir;
     },
 
+    /**
+     * Mira direto num ponto do mundo, virando a minhoca para o lado certo —
+     * é o que o dedo (ou o mouse) faz arrastando pelo campo. `mirar()` anda
+     * de pouquinho em pouquinho porque a tecla fica segurada; aqui o ponteiro
+     * já diz o ângulo inteiro de uma vez.
+     *
+     * Presa na corda a mira não obedece (↑/↓ ali encolhem e alongam), então
+     * arrastar também não deve mexer nela.
+     */
+    apontarPara(x, y) {
+      if (!podeAgir() || estado.corda) return;
+      const w = estado.ativa;
+      const dx = x - w.x;
+      const dy = y - (w.y + Worm.ALTURA * 0.55); // o mesmo pivô da boca da arma
+      if (Math.hypot(dx, dy) < 0.05) return; // em cima da própria minhoca: sem direção
+
+      w.direcao = dx >= 0 ? 1 : -1;
+      // O ângulo é sempre medido a partir da frente da minhoca: quem inverte
+      // o lado é `direcao`, então o eixo x entra em módulo. É isso, e não um
+      // `clamp`, que garante os ±90° de `mirar()`: com x nunca negativo,
+      // `atan2` já devolve exatamente essa faixa.
+      w.angulo = Math.atan2(dy, Math.abs(dx));
+    },
+
     pular(tipo) {
       if (!podeAgir()) return;
       Worm.pular(estado.ativa, terreno, tipo);

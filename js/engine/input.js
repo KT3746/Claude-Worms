@@ -79,6 +79,31 @@ export function createInput(canvas) {
     pointer,
     isDown: (code) => keys.has(code),
     wasPressed: (code) => pressedThisFrame.has(code),
+
+    /**
+     * Botão da tela (toque) empurrando a mesma tecla que o teclado empurraria.
+     *
+     * Entrar por aqui, e não por um caminho paralelo, é o que faz o dedo
+     * herdar de graça tudo que a tecla já sabe fazer: segurar Espaço carrega
+     * a força e liga o jetpack, ↑/↓ miram ou encolhem a corda conforme o
+     * estado do turno. Nenhuma regra do jogo precisa saber quem apertou.
+     */
+    setVirtualKey(code, pressionada) {
+      if (pressionada) {
+        if (!keys.has(code)) pressedThisFrame.add(code);
+        keys.add(code);
+      } else {
+        keys.delete(code);
+      }
+    },
+
+    /** Solta tudo — ao esconder os controles, pausar ou trocar de tela. */
+    releaseAll() {
+      keys.clear();
+      if (pointer.down) pointer.justReleased = true;
+      pointer.down = false;
+    },
+
     /** Chamado ao final de cada quadro para limpar os eventos de borda. */
     endFrame() {
       pointer.justPressed = false;

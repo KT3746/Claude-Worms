@@ -20,7 +20,7 @@ const LARGURA_ESTREITA = 620;
  * Onde cada bloco do HUD fica, para esta tela. Calcular a posição num lugar
  * só é o que impede caixas se sobreporem quando a janela encolhe.
  */
-function layout(camera) {
+function layout(camera, reservaInferior = 0) {
   const estreito = camera.width < LARGURA_ESTREITA;
   const margem = 12;
 
@@ -35,7 +35,9 @@ function layout(camera) {
   }
 
   const meia = (camera.width - margem * 3) / 2;
-  const base = camera.height - 38 - margem;
+  // `reservaInferior` é o que os botões de tela ocupam: o rodapé sobe por cima
+  // deles em vez de ficar escondido atrás.
+  const base = camera.height - 38 - margem - reservaInferior;
   return {
     estreito,
     equipes: { x: margem, y: margem, largura: Math.min(160, camera.width * 0.42) },
@@ -45,9 +47,10 @@ function layout(camera) {
   };
 }
 
-export function desenharHud(ctx, partida, camera) {
+export function desenharHud(ctx, partida, camera, opcoes = {}) {
   const { estado, turnos } = partida;
-  const l = layout(camera);
+  const l = layout(camera, opcoes.reservaInferior ?? 0);
+  l.toque = opcoes.toque === true;
 
   ctx.save();
   ctx.textBaseline = 'top';
@@ -167,16 +170,17 @@ function desenharArma(ctx, estado, l) {
 
   ctx.font = '500 10px system-ui, sans-serif';
   ctx.fillStyle = '#9fb0c0';
-  const detalhe = detalheDaArma(estado);
+  const detalhe = detalheDaArma(estado, l.toque);
   ctx.fillText(recortar(ctx, detalhe, largura - 20), x + 10, y + 23);
 }
 
 /** O que mostrar na linha de baixo da caixa da arma: estado, não só a dica. */
-function detalheDaArma(estado) {
+function detalheDaArma(estado, toque = false) {
   if (estado.corda) return `comprimento: ${estado.corda.L.toFixed(1)} m`;
   if (estado.arma.acao === 'jetpack') return `combustível: ${Math.max(0, estado.jetpackCombustivel).toFixed(1)} s`;
   if (estado.arma.ajustavel) return `pavio ${estado.pavio}s`;
-  return estado.arma.dica;
+  // Só a corda tem dica que nomeia tecla e chega a ser mostrada aqui.
+  return (toque && estado.arma.dicaToque) || estado.arma.dica;
 }
 
 /** Corta um texto com reticências para caber na largura pedida. */
@@ -255,22 +259,39 @@ function desenharSetaForaDaTela(ctx, estado, camera) {
 }
 
 /** Rodapé com os controles, nos primeiros turnos. */
-export function desenharDica(ctx, partida, camera) {
+export function desenharDica(ctx, partida, camera, opcoes = {}) {
   if (partida.turnos.turno > 1) return;
 
   const estreito = camera.width < LARGURA_ESTREITA;
-  // Na tela estreita o rodapé já é do vento e da arma: a dica sobe, e encurta.
-  const texto = estreito
-    ? '← → anda · ↑ ↓ mira · Espaço atira'
-    : '← → anda · ↑ ↓ mira · Espaço segura e solta · Enter pula · [ ] arma';
-  const baseY = estreito ? camera.height - 62 : camera.height - 16;
+  const toque = opcoes.toque === true;
 
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
   ctx.font = '500 12px system-ui, sans-serif';
 
-  const caber = camera.width - 24;
+  /**
+   * Onde a dica cabe depende de qual vizinho ela tem naquele canto.
+   *
+   * Em tela estreita o rodapé inteiro é do vento e da arma, que já subiram por
+   * causa dos botões: a dica sobe junto e tem a largura toda. Em tela larga o
+   * rodapé é livre no meio — os botões de toque ficam nos dois cantos —, então
+   * ela continua embaixo e o que falta é largura, não altura.
+   */
+  const baseY = estreito
+    ? camera.height - 62 - (opcoes.reservaInferior ?? 0)
+    : camera.height - 16;
+  const caber = camera.width - 24 - (estreito ? 0 : (opcoes.reservaLateral ?? 0) * 2);
+
+  const [longa, curta] = toque
+    ? ['◀ ▶ anda · ▲ ▼ mira · segure FOGO e solte · arraste no campo para mirar',
+       '◀ ▶ anda · ▲ ▼ mira · segure FOGO']
+    : ['← → anda · ↑ ↓ mira · Espaço segura e solta · Enter pula · [ ] arma',
+       '← → anda · ↑ ↓ mira · Espaço atira'];
+
+  // A versão longa só entra se couber inteira: meia frase cortada com
+  // reticências ensina menos que a frase curta completa.
+  const texto = ctx.measureText(longa).width + 28 <= caber ? longa : curta;
   const visivel = recortar(ctx, texto, caber - 28);
   const largura = Math.min(caber, ctx.measureText(visivel).width + 28);
 

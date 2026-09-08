@@ -91,3 +91,47 @@ test('soltar o dedo fora do canvas ainda encerra um gesto começado nele', async
   assert.equal(input.pointer.justReleased, true, 'o tiro sai mesmo se o dedo escapou do canvas');
   assert.equal(foraDaTela.cancelado, true);
 });
+
+test('tecla virtual: o botão da tela entra pelo mesmo caminho do teclado', async () => {
+  const { input } = await montar();
+
+  assert.equal(input.isDown('Space'), false);
+
+  input.setVirtualKey('Space', true);
+  assert.equal(input.isDown('Space'), true, 'fica segurada enquanto o dedo está no botão');
+  assert.equal(input.wasPressed('Space'), true, 'e a borda de aperto sai uma vez');
+
+  // Segurar não repete a borda: `carregar()` roda uma vez, não a cada quadro.
+  input.endFrame();
+  assert.equal(input.isDown('Space'), true);
+  assert.equal(input.wasPressed('Space'), false);
+
+  input.setVirtualKey('Space', false);
+  assert.equal(input.isDown('Space'), false, 'soltar o botão solta a tecla');
+});
+
+test('tecla virtual apertada de novo sem soltar não duplica a borda', async () => {
+  const { input } = await montar();
+
+  input.setVirtualKey('ArrowLeft', true);
+  input.setVirtualKey('ArrowLeft', true); // segundo dedo no mesmo botão
+  input.endFrame();
+  input.setVirtualKey('ArrowLeft', true);
+
+  assert.equal(input.wasPressed('ArrowLeft'), false, 'já estava segurada');
+  assert.equal(input.isDown('ArrowLeft'), true);
+});
+
+test('releaseAll solta tudo — os controles sumindo no meio de um toque', async () => {
+  const { canvas, input } = await montar();
+
+  input.setVirtualKey('ArrowRight', true);
+  input.setVirtualKey('Space', true);
+  canvas.emitir('touchstart', toque(10, 10));
+
+  input.releaseAll();
+
+  assert.equal(input.isDown('ArrowRight'), false, 'sem isto a minhoca andaria para sempre');
+  assert.equal(input.isDown('Space'), false);
+  assert.equal(input.pointer.down, false);
+});

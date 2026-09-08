@@ -108,11 +108,35 @@ export function createScreens(root, actions) {
 
     ajuda() {
       current = 'ajuda';
-      const box = panel('Como se joga', 'Dois jogadores no mesmo teclado, um turno de cada vez.');
 
-      box.append(tabela([
+      // Ensinar a tecla a quem está no dedo (ou o contrário) é pior que não
+      // ensinar nada: a tabela segue o mesmo jeito de jogar que os botões da
+      // tela seguem.
+      const toque = actions.usandoToque?.() === true;
+
+      const box = panel(
+        'Como se joga',
+        toque
+          ? 'Dois jogadores no mesmo aparelho, um turno de cada vez.'
+          : 'Dois jogadores no mesmo teclado, um turno de cada vez.',
+      );
+
+      box.append(tabela(toque ? [
+        ['Andar', '◀ ▶'],
+        ['Mirar', '▲ ▼, ou arraste no campo'],
+        ['Ajuste fino da mira', 'arraste longe da minhoca'],
+        ['Força do tiro', 'segure FOGO e solte'],
+        ['Pular', '↷'],
+        ['Cambalhota para trás', '↺'],
+        ['Trocar de arma', 'o botão com o nome da arma'],
+        ['Pavio da granada', '1 a 5, na folha do arsenal'],
+        ['Corda ninja', 'FOGO prende e solta · ▲ ▼ encolhem/alongam'],
+        ['Jetpack', 'segure FOGO para subir · ◀ ▶ de lado'],
+        ['Teleporte', 'FOGO aparece onde a mira aponta'],
+        ['Pausar', 'o botão ⏸ no canto'],
+      ] : [
         ['Andar', '← →'],
-        ['Mirar', '↑ ↓'],
+        ['Mirar', '↑ ↓, ou arraste no campo'],
         ['Ajuste fino da mira', 'Shift + ↑ ↓'],
         ['Força do tiro', 'segure Espaço e solte'],
         ['Pular', 'Enter'],

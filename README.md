@@ -15,23 +15,34 @@ Sirva a pasta do repositório (o jogo usa módulos ES):
 python3 -m http.server 8000   # depois: http://localhost:8000
 ```
 
-Dois jogadores no mesmo teclado. Cada um controla a minhoca da sua equipe
+Dois jogadores no mesmo aparelho. Cada um controla a minhoca da sua equipe
 quando chega a vez dela.
 
-| Ação | Tecla |
-| --- | --- |
-| Andar | ← → |
-| Mirar | ↑ ↓ |
-| Ajuste fino da mira | Shift + ↑ ↓ |
-| Força do tiro | segure **Espaço** e solte |
-| Pular | Enter |
-| Cambalhota para trás | Backspace |
-| Trocar de arma | `[` e `]` percorrem o arsenal |
-| Pavio da granada | 1 a 5, com uma granada na mão |
-| Corda ninja | Espaço prende e solta · ↑ ↓ encolhem/alongam |
-| Jetpack | segure Espaço para subir · ← → de lado |
-| Teleporte | Espaço aparece onde a mira aponta |
-| Pausar | P |
+Serve teclado e dedo, e a escolha não é sua: quem manda é o último ponteiro
+usado. Toque na tela e os botões aparecem; volte para o mouse e eles somem —
+num notebook com tela sensível isso acontece no meio da partida, sem
+configurar nada.
+
+| Ação | Tecla | Na tela |
+| --- | --- | --- |
+| Andar | ← → | ◀ ▶ |
+| Mirar | ↑ ↓ | ▲ ▼, ou arraste no campo |
+| Ajuste fino da mira | Shift + ↑ ↓ | arraste longe da minhoca |
+| Força do tiro | segure **Espaço** e solte | segure **FOGO** e solte |
+| Pular | Enter | ↷ |
+| Cambalhota para trás | Backspace | ↺ |
+| Trocar de arma | `[` e `]` percorrem o arsenal | o botão com o nome da arma |
+| Pavio da granada | 1 a 5, com uma granada na mão | 1 a 5, na folha do arsenal |
+| Corda ninja | Espaço prende e solta · ↑ ↓ encolhem/alongam | FOGO prende e solta · ▲ ▼ encolhem/alongam |
+| Jetpack | segure Espaço para subir · ← → de lado | segure FOGO · ◀ ▶ de lado |
+| Teleporte | Espaço aparece onde a mira aponta | FOGO aparece onde a mira aponta |
+| Pausar | P | o botão ⏸ no canto |
+
+**Arrastar pelo campo mira, e só** — não atira. O ponteiro diz um ângulo
+inteiro de uma vez, coisa que a tecla leva segundos para alcançar; e arrastar
+longe da minhoca dá a mira fina de graça, porque o mesmo movimento do dedo
+cobre menos graus. Quem atira é sempre Espaço ou FOGO, então um toque errado
+no mapa não custa o turno.
 
 ### O arsenal
 
@@ -56,9 +67,10 @@ Usar um utilitário **não passa a vez** — a minhoca continua sob seu controle
 depois. Se o tempo do turno acabar com a corda ainda presa, ela solta
 sozinha.
 
-> **Ainda não dá para jogar no celular.** O layout se adapta a retrato e
-> paisagem, mas os controles de toque são do marco 8 — hoje o jogo é de
-> teclado. No celular dá para olhar; para jogar, teclado.
+> **No celular funciona em retrato e em paisagem.** Os botões encolhem junto
+> com a menor dimensão da tela e ficam nos dois cantos de baixo, ao alcance
+> dos polegares; o HUD sobe para não passar por baixo deles. O meio do
+> rodapé continua sendo campo de batalha — dá para mirar arrastando ali.
 
 ### As regras
 
@@ -124,7 +136,9 @@ js/minhocas/turn.js          máquina de turnos           (puro, testado)
 js/minhocas/weapons.js       a tabela de armas           (dados, testado)
 js/minhocas/projectile.js    execução dos tipos de arma
 js/minhocas/match.js         junta tudo: mundo, equipes, regras
-js/minhocas/ui/              HUD no canvas, telas no DOM
+js/minhocas/ui/hud.js        HUD no canvas
+js/minhocas/ui/screens.js    menu, pausa e fim de partida, no DOM
+js/minhocas/ui/controls.js   botões de toque, no DOM (teclas virtuais)
 ```
 
 ## Testes
