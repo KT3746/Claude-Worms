@@ -127,6 +127,8 @@ const HANDLED_KEYS = new Set([
   'KeyD',
   'KeyN',
   'KeyM',
+  'Minus',
+  'Equal',
   'Backspace',
   'Digit1',
   'Digit2',

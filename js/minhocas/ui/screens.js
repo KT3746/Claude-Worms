@@ -142,6 +142,7 @@ export function createScreens(root, actions) {
         ['Corda ninja', 'FOGO prende e solta · ▲ ▼ encolhem/alongam'],
         ['Jetpack', 'segure FOGO para subir · ◀ ▶ de lado'],
         ['Teleporte', 'FOGO aparece onde a mira aponta'],
+        ['Zoom', '− afasta · + aproxima'],
         ['Ver o mapa inteiro', 'segure 🗺️'],
         ['Pausar', 'o botão ⏸ no canto'],
       ] : [
@@ -156,6 +157,7 @@ export function createScreens(root, actions) {
         ['Corda ninja', 'Espaço prende e solta · ↑ ↓ encolhem/alongam'],
         ['Jetpack', 'segure Espaço para subir · ← → de lado'],
         ['Teleporte', 'Espaço aparece onde a mira aponta'],
+        ['Zoom', '- afasta · = aproxima'],
         ['Ver o mapa inteiro', 'segure M'],
         ['Pausar', 'P'],
       ]));

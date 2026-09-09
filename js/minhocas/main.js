@@ -38,12 +38,15 @@ const estado = {
   motion: true,
   /** 'dedo' liga os botões da tela; 'mouse' os esconde. Ver `definirEntrada`. */
   entrada: 'mouse',
+  /** Preferência de zoom, persistida — ver `ajustarZoom` e `comandos.ajustarZoom` em match.js. */
+  zoom: 1,
 };
 
 save.load();
 sfx.setEnabled(save.settings.sound);
 estado.motion = save.settings.motion !== false;
 camera.shakeEnabled = estado.motion;
+if (typeof save.settings.zoom === 'number') estado.zoom = save.settings.zoom;
 
 const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
 if (reducedMotion?.matches) definirMotion(false);
@@ -60,6 +63,19 @@ const screens = createScreens(ui, {
 function definirMotion(ligado) {
   estado.motion = ligado;
   camera.shakeEnabled = ligado;
+}
+
+/**
+ * Um passo de zoom, com o resultado persistido — a próxima partida já
+ * abre no zoom que você deixou nesta. Funciona em qualquer fase e em
+ * qualquer vez, incluindo a da IA: é visão, não jogada.
+ */
+function ajustarZoom(direcao) {
+  const zoom = estado.partida?.comandos.ajustarZoom(direcao);
+  if (zoom == null) return;
+  estado.zoom = zoom;
+  save.setSetting('zoom', zoom);
+  sfx.click();
 }
 
 // ------------------------------------------------------ dedo ou mouse
@@ -154,6 +170,7 @@ function iniciarPartida(config) {
       particles,
       motionEnabled: estado.motion,
       tempoTurno: config.tempoTurno,
+      zoom: estado.zoom,
     });
     ia = createAiController(estado.partida);
     estado.modo = 'jogando';
@@ -254,6 +271,12 @@ function comandosDiscretos() {
   if (estado.modo === 'jogando' && input.wasPressed('KeyP')) return pausar();
   if (estado.modo === 'pausado' && input.wasPressed('KeyP')) return retomar();
   if (estado.modo !== 'jogando' || !estado.partida) return;
+
+  // Zoom é visão, não jogada: funciona mesmo na vez da IA, pra quem só
+  // está assistindo — por isso vem antes da guarda de `vezDaIA()` abaixo.
+  if (input.wasPressed('Minus')) ajustarZoom(-1);
+  if (input.wasPressed('Equal')) ajustarZoom(1);
+
   // Pausar continua seu, mas mexer na minhoca que está jogando não — é a vez da IA.
   if (vezDaIA()) return;
 

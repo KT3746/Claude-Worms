@@ -30,6 +30,15 @@ const EXPLOSAO_DE_MORTE = { raio: 1.9, dano: 28, impulso: 8 };
 /** A água sobe isto por turno depois da morte súbita. */
 const SUBIDA_AGUA = 0.22;
 
+/**
+ * Faixa do zoom ajustável pelo jogador (`comandos.ajustarZoom`). 0,5 mostra
+ * o dobro de mapa ao redor da minhoca; 1,2 é mais perto que o padrão de
+ * sempre, pra quem quer precisão em vez de contexto.
+ */
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 1.2;
+const PASSO_ZOOM = 0.1;
+
 /** Forma de uma nuvem: deslocamento e raio de cada bolha, em unidades de escala. */
 const BOLHAS_DE_NUVEM = [
   [-1.6, 0.15, 0.85],
@@ -48,6 +57,7 @@ export function createMatch({
   particles,
   motionEnabled = true,
   tempoTurno = 45,
+  zoom = 1,
 } = {}) {
   const rng = createRng(semente);
   const dados = gerarTerreno({ rng });
@@ -123,6 +133,12 @@ export function createMatch({
     mensagem: '',
     tempoMensagem: 0,
     motionEnabled,
+    // Multiplica toda escala de câmera de mira/acompanhamento abaixo — 1 é o
+    // padrão de sempre, menor afasta a câmera pra ver mais mapa em volta
+    // da minhoca (útil sobretudo no celular, onde a tela é pequena e o
+    // inimigo fica fora da vista com o zoom padrão). Ajustável em jogo por
+    // `comandos.ajustarZoom()`, e persistido em `save.settings.zoom`.
+    zoom: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(zoom * 100) / 100)),
     slowmo: 1,
     tempoAgua: 0,
     fimDeJogo: false,
@@ -149,7 +165,7 @@ export function createMatch({
         estado.vento = Math.round(rng.range(-9, 9) * 10) / 10;
         estado.ativa = proximaMinhoca();
         if (estado.ativa) {
-          camera.lookAt(estado.ativa.x, estado.ativa.y + 1, 26);
+          camera.lookAt(estado.ativa.x, estado.ativa.y + 1, 26 * estado.zoom);
           sfx.vez();
         }
       },
@@ -382,6 +398,29 @@ export function createMatch({
     virar(dir) {
       if (!podeAgir()) return;
       estado.ativa.direcao = dir;
+    },
+
+    /**
+     * Um passo de zoom: `direcao` negativa afasta a câmera (mais mapa à
+     * vista), positiva aproxima. Devolve o novo zoom, para persistir, ou
+     * `null` se já estava no limite e nada mudou.
+     *
+     * Diferente dos outros comandos, não passa por `podeAgir()`: é uma
+     * preferência de visão, não uma jogada — funciona em qualquer fase,
+     * inclusive na vez da IA, pra quem só está assistindo. Reaplica a
+     * câmera na hora (via `seguirCamera`), senão o efeito só apareceria na
+     * próxima vez que alguma outra coisa mexesse nela.
+     */
+    ajustarZoom(direcao) {
+      // Arredondado a 2 casas: passos de 0,1 somados em ponto flutuante
+      // derivam (0,5 vira 0,5000000000000001), e aí nem um clamp exato no
+      // piso nem uma comparação futura contra 0,5 batem certo.
+      const bruto = estado.zoom + Math.sign(direcao) * PASSO_ZOOM;
+      const zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(bruto * 100) / 100));
+      if (zoom === estado.zoom) return null;
+      estado.zoom = zoom;
+      seguirCamera(0);
+      return zoom;
     },
 
     /**
@@ -851,7 +890,7 @@ export function createMatch({
   function seguirCamera(dt) {
     if (estado.criaturas.length > 0) {
       const alvo = estado.criaturas[0];
-      camera.lookAt(alvo.x, alvo.y + 1, 22);
+      camera.lookAt(alvo.x, alvo.y + 1, 22 * estado.zoom);
       return;
     }
     // Uma mina já assentada não puxa mais a câmera: ela fica no mapa como
@@ -860,11 +899,11 @@ export function createMatch({
     if (emVoo.length > 0) {
       // Segue o projétil mais alto — é o que o jogador está acompanhando.
       const alvo = emVoo.reduce((a, b) => (b.y > a.y ? b : a));
-      camera.lookAt(alvo.x, alvo.y, 24);
+      camera.lookAt(alvo.x, alvo.y, 24 * estado.zoom);
       return;
     }
     if (estado.ativa?.vivo) {
-      camera.lookAt(estado.ativa.x, estado.ativa.y + 1.2, 26);
+      camera.lookAt(estado.ativa.x, estado.ativa.y + 1.2, 26 * estado.zoom);
     }
   }
 

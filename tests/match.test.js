@@ -240,3 +240,77 @@ test('trocar de arma e disparar hitscan nunca deixa a mensagem de erro travada',
 
   assert.notEqual(partida.turnos.turno, undefined);
 });
+
+// -------------------------------------------------------------------- zoom
+
+/** Como `criarCameraFalsa`, mas guarda a última escala pedida em `lookAt`. */
+function criarCameraComRegistro() {
+  const cam = criarCameraFalsa();
+  let ultimaEscala = null;
+  return {
+    ...cam,
+    lookAt(x, y, escala) {
+      ultimaEscala = escala;
+      cam.lookAt(x, y, escala);
+    },
+    get ultimaEscala() {
+      return ultimaEscala;
+    },
+  };
+}
+
+test('ajustarZoom afasta e aproxima a câmera, e reaplica na hora', () => {
+  const camera = criarCameraComRegistro();
+  const partida = partidaDeTeste({ camera });
+  rodar(partida, 1.5); // sai de PREPARANDO — é aqui que a primeira `lookAt` acontece
+
+  assert.equal(partida.estado.zoom, 1, 'zoom padrão');
+  const escalaPadrao = camera.ultimaEscala;
+
+  const depoisDeAfastar = partida.comandos.ajustarZoom(-1);
+  assert.ok(depoisDeAfastar < 1, `deveria ter afastado, veio ${depoisDeAfastar}`);
+  assert.equal(partida.estado.zoom, depoisDeAfastar);
+  assert.ok(
+    camera.ultimaEscala < escalaPadrao,
+    'ajustarZoom precisa reaplicar a câmera na hora, não só na próxima jogada',
+  );
+
+  const antesDeAproximar = partida.estado.zoom;
+  const depoisDeAproximar = partida.comandos.ajustarZoom(1);
+  assert.ok(depoisDeAproximar > antesDeAproximar, 'um passo pra cima deveria aproximar de novo');
+});
+
+test('ajustarZoom não passa dos limites, e devolve null quando já está no teto', () => {
+  const partida = partidaDeTeste();
+  rodar(partida, 1.5);
+
+  for (let i = 0; i < 20; i += 1) partida.comandos.ajustarZoom(-1);
+  assert.ok(partida.estado.zoom >= 0.5 - 1e-9, `não deveria passar do piso, veio ${partida.estado.zoom}`);
+  assert.equal(partida.estado.zoom, 0.5);
+  assert.equal(partida.comandos.ajustarZoom(-1), null, 'já no piso: nada muda, devolve null');
+
+  for (let i = 0; i < 20; i += 1) partida.comandos.ajustarZoom(1);
+  assert.ok(partida.estado.zoom <= 1.2 + 1e-9, `não deveria passar do teto, veio ${partida.estado.zoom}`);
+  assert.equal(partida.estado.zoom, 1.2);
+  assert.equal(partida.comandos.ajustarZoom(1), null, 'já no teto: nada muda, devolve null');
+});
+
+test('createMatch aceita um zoom inicial, já dentro dos limites', () => {
+  const dentro = partidaDeTeste({ zoom: 0.8 });
+  assert.equal(dentro.estado.zoom, 0.8);
+
+  const acimaDoTeto = partidaDeTeste({ zoom: 5 });
+  assert.equal(acimaDoTeto.estado.zoom, 1.2, 'um valor absurdo é grampeado, não aceito cru');
+
+  const abaixoDoPiso = partidaDeTeste({ zoom: 0 });
+  assert.equal(abaixoDoPiso.estado.zoom, 0.5);
+});
+
+test('ajustarZoom funciona fora de JOGANDO (é visão, não jogada)', () => {
+  const partida = partidaDeTeste();
+  // Ainda em PREPARANDO — os outros comandos (mirar, andar…) são travados
+  // por `podeAgir()` aqui, mas o zoom não deveria ser.
+  assert.equal(partida.fase, FASE.PREPARANDO);
+  const zoom = partida.comandos.ajustarZoom(-1);
+  assert.ok(zoom < 1, `deveria funcionar mesmo fora de JOGANDO, veio ${zoom}`);
+});

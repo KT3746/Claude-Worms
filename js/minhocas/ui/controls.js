@@ -33,6 +33,16 @@ const ACOES = [
   { tecla: 'KeyM', rotulo: '🗺️', classe: 'tc-pequeno', aria: 'Segurar para ver o mapa inteiro' },
 ];
 
+/**
+ * Zoom: um toque, um passo — por isso numa linha à parte de `ACOES`, cujos
+ * botões servem pra segurar. `wasPressed()` (main.js) só dispara na borda de
+ * subida, então segurar um instante a mais não faz mais que um passo só.
+ */
+const ZOOM = [
+  { tecla: 'Minus', rotulo: '−', classe: 'tc-pequeno', aria: 'Afastar o zoom' },
+  { tecla: 'Equal', rotulo: '+', classe: 'tc-pequeno', aria: 'Aproximar o zoom' },
+];
+
 export function createTouchControls(root, { input, acoes }) {
   let visivel = false;
   let arsenalAberto = false;
@@ -48,6 +58,8 @@ export function createTouchControls(root, { input, acoes }) {
   for (const def of BOTOES) cruz.append(botaoDeTecla(def));
 
   const direita = el('div', 'tc-direita');
+  const linhaZoom = el('div', 'tc-linha');
+  for (const def of ZOOM) linhaZoom.append(botaoDeTecla(def));
   const linhaPequena = el('div', 'tc-linha');
   for (const def of ACOES) linhaPequena.append(botaoDeTecla(def));
 
@@ -66,7 +78,7 @@ export function createTouchControls(root, { input, acoes }) {
     aria: 'Atirar: segure para dar força e solte',
   });
 
-  direita.append(linhaPequena, botaoArma, fogo);
+  direita.append(linhaZoom, linhaPequena, botaoArma, fogo);
 
   const folha = el('div', 'tc-folha');
   folha.hidden = true;

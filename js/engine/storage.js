@@ -5,7 +5,7 @@
 
 const KEY = 'arqueiro.save.v1';
 
-const empty = () => ({ levels: {}, settings: { sound: true, motion: true } });
+const empty = () => ({ levels: {}, settings: { sound: true, motion: true, zoom: 1 } });
 
 let memory = empty();
 
