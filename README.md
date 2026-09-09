@@ -36,7 +36,7 @@ configurar nada.
 | Corda ninja | Espaço prende e solta · ↑ ↓ encolhem/alongam | FOGO prende e solta · ▲ ▼ encolhem/alongam |
 | Jetpack | segure Espaço para subir · ← → de lado | segure FOGO · ◀ ▶ de lado |
 | Teleporte | Espaço aparece onde a mira aponta | FOGO aparece onde a mira aponta |
-| Zoom | `-` afasta · `=` aproxima | − afasta · + aproxima |
+| Zoom | `-` afasta · `=` aproxima | − afasta · + aproxima, ou pinça com dois dedos |
 | Ver o mapa inteiro | segure M | segure 🗺️ |
 | Pausar | P | o botão ⏸ no canto |
 
@@ -47,13 +47,13 @@ cobre menos graus. Quem atira é sempre Espaço ou FOGO, então um toque errado
 no mapa não custa o turno.
 
 O mapa é bem maior que a tela — duas formas de ver mais dele. `-`/`=` (ou
-os botões − / +) afastam ou aproximam o zoom da mira aos poucos, e ficam
-assim: dá pra jogar o resto da partida inteira mais afastado, pra ver o
-inimigo enquanto mira e atira, sem precisar segurar nada. É lembrado —
-a próxima partida já abre no zoom que você deixou nesta. Segurando M (ou
-o botão do mapa) a câmera afasta até caber o mapa inteiro, pra decidir com
-calma antes de mirar; soltar volta suave pro zoom de sempre. Nenhum dos
-dois mira nem anda: é só visão.
+os botões − / +, ou pinçar com dois dedos no toque) afastam ou aproximam o
+zoom da mira aos poucos, e ficam assim: dá pra jogar o resto da partida
+inteira mais afastado, pra ver o inimigo enquanto mira e atira, sem
+precisar segurar nada. É lembrado — a próxima partida já abre no zoom que
+você deixou nesta. Segurando M (ou o botão do mapa) a câmera afasta até
+caber o mapa inteiro, pra decidir com calma antes de mirar; soltar volta
+suave pro zoom de sempre. Nenhum dos dois mira nem anda: é só visão.
 
 ### O arsenal
 

@@ -142,7 +142,7 @@ export function createScreens(root, actions) {
         ['Corda ninja', 'FOGO prende e solta · ▲ ▼ encolhem/alongam'],
         ['Jetpack', 'segure FOGO para subir · ◀ ▶ de lado'],
         ['Teleporte', 'FOGO aparece onde a mira aponta'],
-        ['Zoom', '− afasta · + aproxima'],
+        ['Zoom', '− afasta · + aproxima, ou pinça com dois dedos'],
         ['Ver o mapa inteiro', 'segure 🗺️'],
         ['Pausar', 'o botão ⏸ no canto'],
       ] : [

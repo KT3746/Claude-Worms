@@ -5,6 +5,11 @@
 
 export function createInput(canvas) {
   const pointer = { x: 0, y: 0, down: false, justPressed: false, justReleased: false };
+  // Acumula, quadro a quadro, o quanto os dois dedos se afastaram ou
+  // aproximaram desde a última leitura — 1 é "nada mudou". `endFrame()`
+  // zera de volta pra 1, do mesmo jeito que zera `justPressed`/`justReleased`.
+  const pinch = { ativo: false, fator: 1 };
+  let pinchDistancia = null;
   const keys = new Set();
   const pressedThisFrame = new Set();
 
@@ -15,7 +20,39 @@ export function createInput(canvas) {
     pointer.y = source.clientY - rect.top;
   }
 
+  function distanciaEntreToques(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  }
+
+  /**
+   * Dois dedos na tela: pinça, não mira. Solta o ponteiro (sem soltar como
+   * um "disparar" — nada aqui lê `justReleased` pra isso) pra o segundo dedo
+   * não fazer a mira derivar atrás do primeiro enquanto os dois se mexem.
+   */
+  function atualizarPinca(event) {
+    if (event.touches.length < 2) {
+      pinch.ativo = false;
+      pinchDistancia = null;
+      return;
+    }
+    const distancia = distanciaEntreToques(event.touches);
+    if (pinch.ativo && pinchDistancia > 0) {
+      pinch.fator *= distancia / pinchDistancia;
+    } else {
+      pinch.ativo = true;
+      pointer.down = false;
+    }
+    pinchDistancia = distancia;
+  }
+
   function onDown(event) {
+    if (event.touches?.length >= 2) {
+      atualizarPinca(event);
+      if (event.cancelable) event.preventDefault();
+      return;
+    }
     positionFrom(event);
     if (!pointer.down) pointer.justPressed = true;
     pointer.down = true;
@@ -23,11 +60,17 @@ export function createInput(canvas) {
   }
 
   function onMove(event) {
+    if (event.touches?.length >= 2) {
+      atualizarPinca(event);
+      if (event.cancelable) event.preventDefault();
+      return;
+    }
     positionFrom(event);
     if (pointer.down && event.cancelable) event.preventDefault();
   }
 
   function onUp(event) {
+    if (event.touches) atualizarPinca(event); // pode restar 1 dedo (ou 0) — atualiza/encerra a pinça
     positionFrom(event);
     // `touchend`/`mouseup` escutam a janela inteira para não perder o dedo (ou
     // o botão) que sai de cima do canvas no meio do gesto. Mas quem começou o
@@ -73,10 +116,13 @@ export function createInput(canvas) {
     keys.clear();
     if (pointer.down) pointer.justReleased = true;
     pointer.down = false;
+    pinch.ativo = false;
+    pinchDistancia = null;
   });
 
   return {
     pointer,
+    pinch,
     isDown: (code) => keys.has(code),
     wasPressed: (code) => pressedThisFrame.has(code),
 
@@ -102,6 +148,8 @@ export function createInput(canvas) {
       keys.clear();
       if (pointer.down) pointer.justReleased = true;
       pointer.down = false;
+      pinch.ativo = false;
+      pinchDistancia = null;
     },
 
     /** Chamado ao final de cada quadro para limpar os eventos de borda. */
@@ -109,6 +157,7 @@ export function createInput(canvas) {
       pointer.justPressed = false;
       pointer.justReleased = false;
       pressedThisFrame.clear();
+      pinch.fator = 1;
     },
   };
 }

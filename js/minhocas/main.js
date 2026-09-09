@@ -70,12 +70,26 @@ function definirMotion(ligado) {
  * abre no zoom que você deixou nesta. Funciona em qualquer fase e em
  * qualquer vez, incluindo a da IA: é visão, não jogada.
  */
-function ajustarZoom(direcao) {
-  const zoom = estado.partida?.comandos.ajustarZoom(direcao);
-  if (zoom == null) return;
+/** Guarda o novo zoom (se algo mudou de verdade) — comum ao passo e à pinça. */
+function persistirZoom(zoom) {
+  if (zoom == null) return false;
   estado.zoom = zoom;
   save.setSetting('zoom', zoom);
-  sfx.click();
+  return true;
+}
+
+function ajustarZoom(direcao) {
+  if (persistirZoom(estado.partida?.comandos.ajustarZoom(direcao))) sfx.click();
+}
+
+/**
+ * Pinça de dois dedos: `input.pinch.fator` (motor de entrada) chega aqui
+ * todo quadro em que muda — sem som a cada quadro, que viraria um zumbido;
+ * o clique continua reservado ao passo discreto de `-`/`=` e dos botões.
+ */
+function pincarZoom(fator) {
+  if (fator === 1) return;
+  persistirZoom(estado.partida?.comandos.multiplicarZoom(fator));
 }
 
 // ------------------------------------------------------ dedo ou mouse
@@ -276,6 +290,7 @@ function comandosDiscretos() {
   // está assistindo — por isso vem antes da guarda de `vezDaIA()` abaixo.
   if (input.wasPressed('Minus')) ajustarZoom(-1);
   if (input.wasPressed('Equal')) ajustarZoom(1);
+  pincarZoom(input.pinch.fator);
 
   // Pausar continua seu, mas mexer na minhoca que está jogando não — é a vez da IA.
   if (vezDaIA()) return;

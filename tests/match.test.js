@@ -314,3 +314,25 @@ test('ajustarZoom funciona fora de JOGANDO (é visão, não jogada)', () => {
   const zoom = partida.comandos.ajustarZoom(-1);
   assert.ok(zoom < 1, `deveria funcionar mesmo fora de JOGANDO, veio ${zoom}`);
 });
+
+test('multiplicarZoom é proporcional ao gesto — pinça, não passo fixo', () => {
+  const camera = criarCameraComRegistro();
+  const partida = partidaDeTeste({ camera });
+  rodar(partida, 1.5);
+
+  const zoom = partida.comandos.multiplicarZoom(0.8);
+  assert.equal(zoom, 0.8, 'zoom 1 × fator 0,8');
+  assert.ok(camera.ultimaEscala < 26, 'reaplica a câmera na hora, igual ajustarZoom');
+
+  const zoom2 = partida.comandos.multiplicarZoom(1.25);
+  assert.equal(zoom2, 1, 'volta pra perto de 1 (0,8 × 1,25)');
+});
+
+test('multiplicarZoom também respeita os limites e devolve null sem mudança', () => {
+  const partida = partidaDeTeste();
+  rodar(partida, 1.5);
+
+  const zoom = partida.comandos.multiplicarZoom(0.01); // fator absurdo, bem abaixo do piso
+  assert.equal(zoom, 0.5);
+  assert.equal(partida.comandos.multiplicarZoom(1), null, 'fator 1: "não mudou nada", devolve null');
+});

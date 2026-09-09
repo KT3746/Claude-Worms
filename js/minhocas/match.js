@@ -412,15 +412,18 @@ export function createMatch({
      * próxima vez que alguma outra coisa mexesse nela.
      */
     ajustarZoom(direcao) {
-      // Arredondado a 2 casas: passos de 0,1 somados em ponto flutuante
-      // derivam (0,5 vira 0,5000000000000001), e aí nem um clamp exato no
-      // piso nem uma comparação futura contra 0,5 batem certo.
-      const bruto = estado.zoom + Math.sign(direcao) * PASSO_ZOOM;
-      const zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(bruto * 100) / 100));
-      if (zoom === estado.zoom) return null;
-      estado.zoom = zoom;
-      seguirCamera(0);
-      return zoom;
+      return definirZoom(estado.zoom + Math.sign(direcao) * PASSO_ZOOM);
+    },
+
+    /**
+     * Zoom contínuo, para o gesto de pinça (`input.pinch.fator` em
+     * input.js): `fator` é a razão entre a distância atual dos dois dedos e
+     * a distância na última leitura — 1 é "não mudou", >1 afastando os
+     * dedos (aproxima a câmera), <1 juntando (afasta). Mesmo resultado dos
+     * passos de `-`/`=`, só que suave e proporcional ao gesto.
+     */
+    multiplicarZoom(fator) {
+      return definirZoom(estado.zoom * fator);
     },
 
     /**
@@ -885,6 +888,21 @@ export function createMatch({
         estado.criaturas.splice(i, 1);
       }
     }
+  }
+
+  /**
+   * Grampeia, arredonda a 2 casas (soma e multiplicação em ponto flutuante
+   * derivam — 0,5 vira 0,5000000000000001 — e aí nem o clamp exato no piso
+   * nem uma comparação futura contra 0,5 batem certo) e, se mudou de
+   * verdade, reaplica a câmera na hora. Usado por `ajustarZoom` (passo) e
+   * `multiplicarZoom` (contínuo, pinça).
+   */
+  function definirZoom(bruto) {
+    const zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(bruto * 100) / 100));
+    if (zoom === estado.zoom) return null;
+    estado.zoom = zoom;
+    seguirCamera(0);
+    return zoom;
   }
 
   function seguirCamera(dt) {
