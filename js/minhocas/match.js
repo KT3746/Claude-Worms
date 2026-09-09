@@ -31,11 +31,16 @@ const EXPLOSAO_DE_MORTE = { raio: 1.9, dano: 28, impulso: 8 };
 const SUBIDA_AGUA = 0.22;
 
 /**
- * Faixa do zoom ajustável pelo jogador (`comandos.ajustarZoom`). 0,5 mostra
- * o dobro de mapa ao redor da minhoca; 1,2 é mais perto que o padrão de
- * sempre, pra quem quer precisão em vez de contexto.
+ * Faixa do zoom ajustável pelo jogador (`comandos.ajustarZoom`). O mapa tem
+ * 160 m de largura — mesmo no piso antigo (0,5) um celular via uns 30 m de
+ * cada vez, o suficiente pra nunca ver um adversário a mais de 15 m e
+ * obrigar a mirar às cegas contra qualquer alvo mais distante. 0,15 mostra
+ * uns 100 m num celular comum (bem mais que a maioria das distâncias reais
+ * entre duas minhocas) sem precisar segurar "ver o mapa" o jogo inteiro;
+ * 1,2 continua mais perto que o padrão de sempre, pra quem quer precisão em
+ * vez de contexto.
  */
-const ZOOM_MIN = 0.5;
+const ZOOM_MIN = 0.15;
 const ZOOM_MAX = 1.2;
 const PASSO_ZOOM = 0.1;
 

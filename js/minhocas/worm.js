@@ -410,14 +410,14 @@ export function desenharMinhoca(ctx, w, camera, { ativa = false, cores } = {}) {
 
 /**
  * Abaixo desta escala a placa de nome+vida some — sobra só a seta de quem
- * está jogando. É o caso de "ver o mapa" (segurar M): o corpo da minhoca já
- * vira um pontinho de poucos pixels, mas a placa tem um piso de fonte
+ * está jogando. É o caso de "ver o mapa" (segurar M) e também do zoom
+ * ajustável no piso (`ZOOM_MIN` em match.js chega a 26×0,15 ≈ 3,9): o corpo
+ * da minhoca encolhe livre com a escala, mas a placa tem um piso de fonte
  * legível (`fonte` abaixo nunca fica menor que 10px) que não encolhe junto
  * — numa tela cheia de minhocas próximas, essas placas de tamanho fixo se
- * empilham umas em cima das outras antes mesmo dos pontinhos se tocarem.
- * O jogo normal nunca chega perto disto: mesmo no zoom mais afastado que dá
- * pra escolher (`ZOOM_MIN` em match.js), a escala de mira não cai abaixo de
- * 13 — só a visão do mapa inteiro passa desse limite.
+ * empilham umas em cima das outras antes mesmo dos pontinhos se tocarem. A
+ * seta continua com tamanho mínimo próprio (`ESCALA_MINIMA_SETA`) porque é
+ * a única pista que sobra pra achar sua minhoca de longe.
  */
 const LIMITE_PLACA_COMPACTA = 10;
 

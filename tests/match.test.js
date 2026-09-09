@@ -285,8 +285,8 @@ test('ajustarZoom não passa dos limites, e devolve null quando já está no tet
   rodar(partida, 1.5);
 
   for (let i = 0; i < 20; i += 1) partida.comandos.ajustarZoom(-1);
-  assert.ok(partida.estado.zoom >= 0.5 - 1e-9, `não deveria passar do piso, veio ${partida.estado.zoom}`);
-  assert.equal(partida.estado.zoom, 0.5);
+  assert.ok(partida.estado.zoom >= 0.15 - 1e-9, `não deveria passar do piso, veio ${partida.estado.zoom}`);
+  assert.equal(partida.estado.zoom, 0.15);
   assert.equal(partida.comandos.ajustarZoom(-1), null, 'já no piso: nada muda, devolve null');
 
   for (let i = 0; i < 20; i += 1) partida.comandos.ajustarZoom(1);
@@ -303,7 +303,7 @@ test('createMatch aceita um zoom inicial, já dentro dos limites', () => {
   assert.equal(acimaDoTeto.estado.zoom, 1.2, 'um valor absurdo é grampeado, não aceito cru');
 
   const abaixoDoPiso = partidaDeTeste({ zoom: 0 });
-  assert.equal(abaixoDoPiso.estado.zoom, 0.5);
+  assert.equal(abaixoDoPiso.estado.zoom, 0.15);
 });
 
 test('ajustarZoom funciona fora de JOGANDO (é visão, não jogada)', () => {
@@ -333,6 +333,6 @@ test('multiplicarZoom também respeita os limites e devolve null sem mudança', 
   rodar(partida, 1.5);
 
   const zoom = partida.comandos.multiplicarZoom(0.01); // fator absurdo, bem abaixo do piso
-  assert.equal(zoom, 0.5);
+  assert.equal(zoom, 0.15);
   assert.equal(partida.comandos.multiplicarZoom(1), null, 'fator 1: "não mudou nada", devolve null');
 });
