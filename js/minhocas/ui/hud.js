@@ -283,9 +283,9 @@ export function desenharDica(ctx, partida, camera, opcoes = {}) {
   const caber = camera.width - 24 - (estreito ? 0 : (opcoes.reservaLateral ?? 0) * 2);
 
   const [longa, curta] = toque
-    ? ['◀ ▶ anda · ▲ ▼ mira · segure FOGO e solte · arraste no campo para mirar',
+    ? ['◀ ▶ anda · ▲ ▼ mira · segure FOGO e solte · arraste para mirar · segure 🗺️ para ver o mapa',
        '◀ ▶ anda · ▲ ▼ mira · segure FOGO']
-    : ['← → anda · ↑ ↓ mira · Espaço segura e solta · Enter pula · [ ] arma',
+    : ['← → anda · ↑ ↓ mira · Espaço segura e solta · Enter pula · [ ] arma · segure M para ver o mapa',
        '← → anda · ↑ ↓ mira · Espaço atira'];
 
   // A versão longa só entra se couber inteira: meia frase cortada com

@@ -30,6 +30,7 @@ const BOTOES = [
 const ACOES = [
   { tecla: 'Backspace', rotulo: '↺', classe: 'tc-pequeno', aria: 'Cambalhota para trás' },
   { tecla: 'Enter', rotulo: '↷', classe: 'tc-pequeno', aria: 'Pular' },
+  { tecla: 'KeyM', rotulo: '🗺️', classe: 'tc-pequeno', aria: 'Segurar para ver o mapa inteiro' },
 ];
 
 export function createTouchControls(root, { input, acoes }) {

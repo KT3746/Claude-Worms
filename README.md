@@ -36,6 +36,7 @@ configurar nada.
 | Corda ninja | Espaço prende e solta · ↑ ↓ encolhem/alongam | FOGO prende e solta · ▲ ▼ encolhem/alongam |
 | Jetpack | segure Espaço para subir · ← → de lado | segure FOGO · ◀ ▶ de lado |
 | Teleporte | Espaço aparece onde a mira aponta | FOGO aparece onde a mira aponta |
+| Ver o mapa inteiro | segure M | segure 🗺️ |
 | Pausar | P | o botão ⏸ no canto |
 
 **Arrastar pelo campo mira, e só** — não atira. O ponteiro diz um ângulo
@@ -43,6 +44,11 @@ inteiro de uma vez, coisa que a tecla leva segundos para alcançar; e arrastar
 longe da minhoca dá a mira fina de graça, porque o mesmo movimento do dedo
 cobre menos graus. Quem atira é sempre Espaço ou FOGO, então um toque errado
 no mapa não custa o turno.
+
+O mapa é bem maior que a tela — segurando M (ou o botão do mapa, no toque) a
+câmera afasta até caber o mapa inteiro, pra ver onde o inimigo está e como é
+o relevo entre vocês antes de decidir o tiro. Soltar volta pra mira, suave.
+Só olha; não mira nem anda enquanto está segurado.
 
 ### O arsenal
 

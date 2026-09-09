@@ -13,6 +13,7 @@ import { hashSeed, randomSeed } from '../engine/rng.js';
 import { createMatch } from './match.js';
 import { createAiController } from './ai.js';
 import { DT_FISICA } from './ballistics.js';
+import { FASE } from './turn.js';
 import { desenharHud, desenharDica } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
 import { createTouchControls } from './ui/controls.js';
@@ -209,6 +210,27 @@ pauseButton.addEventListener('click', () => {
 
 // --------------------------------------------------------------- entrada
 
+/**
+ * Segurar M (ou o botão do mapa, no toque) afasta a câmera até caber o mapa
+ * inteiro na tela — só pra olhar, sem mirar nem andar.
+ *
+ * Precisa vencer `seguirCamera()` (em match.js), que todo quadro volta a
+ * mirar a câmera na minhoca ativa. Por isso usa `camera.snap()` — direto,
+ * sem suavização — depois que `partida.update()` já rodou: qualquer
+ * `lookAt()` daria na mesma, sobrescrito no próximo quadro antes de valer.
+ * Soltar a tecla não faz nada por aqui; a própria `seguirCamera()` já traz a
+ * câmera de volta, suavemente, no quadro seguinte.
+ */
+function aplicarVisaoDoMapa() {
+  const partida = estado.partida;
+  if (!partida || partida.fase !== FASE.JOGANDO) return;
+  if (!input.isDown('KeyM')) return;
+
+  const { largura, altura } = partida.terreno;
+  const escala = Math.min(camera.width / largura, camera.height / altura) * 0.92;
+  camera.snap(largura / 2, altura / 2, escala);
+}
+
 function comandosContinuos(dt) {
   const partida = estado.partida;
   if (!partida || vezDaIA()) return;
@@ -294,6 +316,7 @@ const loop = createLoop({
     // toque precisam reagir a "agora é a IA que joga".
     sincronizarControles();
     estado.partida.update(dt);
+    aplicarVisaoDoMapa();
     if (estado.partida.fimDeJogo) terminar();
   },
 
