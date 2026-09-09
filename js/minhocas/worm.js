@@ -409,15 +409,17 @@ export function desenharMinhoca(ctx, w, camera, { ativa = false, cores } = {}) {
 }
 
 /**
- * Abaixo desta escala a placa de nome+vida some — sobra só a seta de quem
- * está jogando. É o caso de "ver o mapa" (segurar M) e também do zoom
- * ajustável no piso (`ZOOM_MIN` em match.js chega a 26×0,15 ≈ 3,9): o corpo
- * da minhoca encolhe livre com a escala, mas a placa tem um piso de fonte
+ * Abaixo desta escala a placa de nome+vida vira uma bolinha da cor do time
+ * — e a seta de quem está jogando continua por cima, se for o caso. É o
+ * caso de "ver o mapa" (segurar M) e também do zoom ajustável no piso
+ * (`ZOOM_MIN` em match.js chega a 26×0,15 ≈ 3,9): o corpo da minhoca
+ * encolhe livre com a escala, mas a placa de texto tem um piso de fonte
  * legível (`fonte` abaixo nunca fica menor que 10px) que não encolhe junto
  * — numa tela cheia de minhocas próximas, essas placas de tamanho fixo se
- * empilham umas em cima das outras antes mesmo dos pontinhos se tocarem. A
- * seta continua com tamanho mínimo próprio (`ESCALA_MINIMA_SETA`) porque é
- * a única pista que sobra pra achar sua minhoca de longe.
+ * empilhavam umas em cima das outras antes mesmo dos corpos, já minúsculos,
+ * se tocarem. A bolinha some com o texto mas não com a cor: sem ela dava
+ * pra confundir sua minhoca com a do inimigo, já que o corpo de verdade
+ * também encolhe até virar um pixel sem cor confiável.
  */
 const LIMITE_PLACA_COMPACTA = 10;
 
@@ -452,6 +454,25 @@ function desenharPlaca(ctx, w, cores, cx, cy, escala, ativa) {
 
     ctx.fillStyle = cores.corpo;
     ctx.fillText(texto, cx, cy - fonte * 0.28);
+    ctx.restore();
+  } else {
+    // O corpo já é da cor do time, mas em poucos pixels ninguém confia numa
+    // cor — dá pra confundir sua minhoca com a do inimigo (foi exatamente o
+    // que aconteceu: sem a placa de texto, sem jeito nenhum de saber quem é
+    // quem). Uma bolinha com raio fixo, que não encolhe junto com a escala,
+    // resolve sem reintroduzir a colisão que tirou o texto daqui — dois
+    // times raramente terminam a poucos pixels um do outro na tela, mas uma
+    // caixa de texto larga terminava, sempre.
+    const raio = 4.5;
+    altura = raio * 2 + 3;
+    ctx.save();
+    ctx.fillStyle = cores.corpo;
+    ctx.strokeStyle = 'rgba(9, 16, 26, 0.85)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy - raio, raio, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
     ctx.restore();
   }
 

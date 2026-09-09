@@ -143,6 +143,7 @@ export function createScreens(root, actions) {
         ['Jetpack', 'segure FOGO para subir · ◀ ▶ de lado'],
         ['Teleporte', 'FOGO aparece onde a mira aponta'],
         ['Zoom', '− afasta · + aproxima, ou pinça com dois dedos'],
+        ['Mover a câmera de lado', 'arraste com dois dedos'],
         ['Ver o mapa inteiro', 'segure 🗺️'],
         ['Pausar', 'o botão ⏸ no canto'],
       ] : [
@@ -158,6 +159,7 @@ export function createScreens(root, actions) {
         ['Jetpack', 'segure Espaço para subir · ← → de lado'],
         ['Teleporte', 'Espaço aparece onde a mira aponta'],
         ['Zoom', '- afasta · = aproxima'],
+        ['Mover a câmera de lado', 'Shift + ← →'],
         ['Ver o mapa inteiro', 'segure M'],
         ['Pausar', 'P'],
       ]));

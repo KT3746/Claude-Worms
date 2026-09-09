@@ -247,14 +247,19 @@ test('trocar de arma e disparar hitscan nunca deixa a mensagem de erro travada',
 function criarCameraComRegistro() {
   const cam = criarCameraFalsa();
   let ultimaEscala = null;
+  let ultimoCentro = null;
   return {
     ...cam,
     lookAt(x, y, escala) {
       ultimaEscala = escala;
+      ultimoCentro = { x, y };
       cam.lookAt(x, y, escala);
     },
     get ultimaEscala() {
       return ultimaEscala;
+    },
+    get ultimaCentro() {
+      return ultimoCentro;
     },
   };
 }
@@ -335,4 +340,65 @@ test('multiplicarZoom também respeita os limites e devolve null sem mudança', 
   const zoom = partida.comandos.multiplicarZoom(0.01); // fator absurdo, bem abaixo do piso
   assert.equal(zoom, 0.15);
   assert.equal(partida.comandos.multiplicarZoom(1), null, 'fator 1: "não mudou nada", devolve null');
+});
+
+// -------------------------------------------------------------------- pan
+
+test('panCamera desloca a câmera sem mexer na minhoca, e reaplica na hora', () => {
+  const camera = criarCameraComRegistro();
+  const partida = partidaDeTeste({ camera });
+  rodar(partida, 1.5);
+
+  const w = partida.estado.ativa;
+  const xAntes = w.x;
+
+  partida.comandos.panCamera(-10);
+  assert.equal(partida.estado.panOffsetX, -10);
+  assert.equal(w.x, xAntes, 'a minhoca não anda — é a câmera que se move');
+  assert.ok(camera.ultimaCentro.x < w.x, 'a câmera olha pra um ponto à esquerda da minhoca');
+
+  partida.comandos.panCamera(4);
+  assert.equal(partida.estado.panOffsetX, -6, '-10 + 4');
+});
+
+test('panCamera some no próximo turno — cada turno começa centrado', () => {
+  const partida = partidaDeTeste();
+  rodar(partida, 1.5);
+
+  partida.comandos.panCamera(20);
+  assert.equal(partida.estado.panOffsetX, 20);
+
+  // Força o fim do turno atual (sem disparar) para o próximo começar.
+  partida.turnos.forcarFimDeTurno();
+  rodar(partida, 3); // ASSENTANDO -> RESOLVENDO -> PREPARANDO -> JOGANDO do próximo
+
+  assert.equal(partida.estado.panOffsetX, 0, 'o novo turno não herda o desvio do turno anterior');
+});
+
+test('panCamera funciona fora de JOGANDO (é visão, não jogada)', () => {
+  const partida = partidaDeTeste();
+  assert.equal(partida.fase, FASE.PREPARANDO);
+  partida.comandos.panCamera(5);
+  assert.equal(partida.estado.panOffsetX, 5);
+});
+
+test('um projétil em voo ignora o pan e a câmera volta a seguir a ação', () => {
+  const camera = criarCameraComRegistro();
+  const partida = partidaDeTeste({ camera });
+  rodar(partida, 1.5);
+
+  partida.comandos.panCamera(15);
+  const w = partida.estado.ativa;
+
+  partida.estado.projeteis.push({
+    arma: armaPorId('bazuca'),
+    x: w.x + 5, y: w.y + 3, vx: 0, vy: 0,
+    dono: w, pavio: 0, vivo: true, fumaca: 1, giro: 0, apoiado: false, tempoVivo: 0,
+  });
+  partida.update(1 / 120);
+
+  assert.ok(
+    Math.abs(camera.ultimaCentro.x - (w.x + 5)) < 0.01,
+    'a câmera segue o projétil de verdade, não a minhoca deslocada pelo pan',
+  );
 });

@@ -144,6 +144,9 @@ export function createMatch({
     // inimigo fica fora da vista com o zoom padrão). Ajustável em jogo por
     // `comandos.ajustarZoom()`, e persistido em `save.settings.zoom`.
     zoom: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(zoom * 100) / 100)),
+    // Desvio horizontal manual da câmera em relação à minhoca ativa — ver
+    // `comandos.panCamera`. Zerado a cada novo turno, em `aoPreparar`.
+    panOffsetX: 0,
     slowmo: 1,
     tempoAgua: 0,
     fimDeJogo: false,
@@ -169,6 +172,7 @@ export function createMatch({
         estado.pavio = ARMAS[1].pavio;
         estado.vento = Math.round(rng.range(-9, 9) * 10) / 10;
         estado.ativa = proximaMinhoca();
+        estado.panOffsetX = 0; // cada turno começa centrado — nenhum passeio de câmera sobra do turno anterior
         if (estado.ativa) {
           camera.lookAt(estado.ativa.x, estado.ativa.y + 1, 26 * estado.zoom);
           sfx.vez();
@@ -429,6 +433,23 @@ export function createMatch({
      */
     multiplicarZoom(fator) {
       return definirZoom(estado.zoom * fator);
+    },
+
+    /**
+     * Desloca a câmera para os lados, sem mexer na minhoca nem no zoom —
+     * pra ver o que tem à esquerda ou à direita sem precisar andar até lá
+     * (o que gastaria o turno) nem afastar o zoom até tudo virar pontinho.
+     * Como o zoom, não passa por `podeAgir()`: é visão, não jogada. O
+     * grampo é só pra não deixar o desvio crescer sem limite enquanto a
+     * câmera empaca contra a borda do mapa — `camera.setBounds` já cuida
+     * de nunca mostrar além da borda de verdade.
+     */
+    panCamera(deltaMundo) {
+      estado.panOffsetX = Math.max(
+        -terreno.largura,
+        Math.min(terreno.largura, estado.panOffsetX + deltaMundo),
+      );
+      seguirCamera(0);
     },
 
     /**
@@ -925,8 +946,11 @@ export function createMatch({
       camera.lookAt(alvo.x, alvo.y, 24 * estado.zoom);
       return;
     }
+    // Só este caso (parado, decidindo o tiro) obedece o passeio manual da
+    // câmera — em voo ou com a ovelha andando, a câmera volta a seguir a
+    // ação de verdade, ignorando qualquer desvio que tenha sobrado.
     if (estado.ativa?.vivo) {
-      camera.lookAt(estado.ativa.x, estado.ativa.y + 1.2, 26 * estado.zoom);
+      camera.lookAt(estado.ativa.x + estado.panOffsetX, estado.ativa.y + 1.2, 26 * estado.zoom);
     }
   }
 

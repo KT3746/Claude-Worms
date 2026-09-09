@@ -5,11 +5,15 @@
 
 export function createInput(canvas) {
   const pointer = { x: 0, y: 0, down: false, justPressed: false, justReleased: false };
-  // Acumula, quadro a quadro, o quanto os dois dedos se afastaram ou
-  // aproximaram desde a última leitura — 1 é "nada mudou". `endFrame()`
-  // zera de volta pra 1, do mesmo jeito que zera `justPressed`/`justReleased`.
-  const pinch = { ativo: false, fator: 1 };
+  // Acumula, quadro a quadro, o quanto os dois dedos se afastaram/aproximaram
+  // (`fator`, 1 = nada mudou) e o quanto o ponto médio entre eles andou na
+  // horizontal (`panX`, em pixels de tela, 0 = nada mudou) desde a última
+  // leitura — pinça e arrasto de dois dedos ao mesmo tempo, como em qualquer
+  // mapa. `endFrame()` zera os dois de volta, do mesmo jeito que zera
+  // `justPressed`/`justReleased`.
+  const pinch = { ativo: false, fator: 1, panX: 0 };
   let pinchDistancia = null;
+  let pinchMeioX = null;
   const keys = new Set();
   const pressedThisFrame = new Set();
 
@@ -35,16 +39,20 @@ export function createInput(canvas) {
     if (event.touches.length < 2) {
       pinch.ativo = false;
       pinchDistancia = null;
+      pinchMeioX = null;
       return;
     }
     const distancia = distanciaEntreToques(event.touches);
+    const meioX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
     if (pinch.ativo && pinchDistancia > 0) {
       pinch.fator *= distancia / pinchDistancia;
+      pinch.panX += meioX - pinchMeioX;
     } else {
       pinch.ativo = true;
       pointer.down = false;
     }
     pinchDistancia = distancia;
+    pinchMeioX = meioX;
   }
 
   function onDown(event) {
@@ -118,6 +126,7 @@ export function createInput(canvas) {
     pointer.down = false;
     pinch.ativo = false;
     pinchDistancia = null;
+    pinchMeioX = null;
   });
 
   return {
@@ -150,6 +159,7 @@ export function createInput(canvas) {
       pointer.down = false;
       pinch.ativo = false;
       pinchDistancia = null;
+      pinchMeioX = null;
     },
 
     /** Chamado ao final de cada quadro para limpar os eventos de borda. */
@@ -158,6 +168,7 @@ export function createInput(canvas) {
       pointer.justReleased = false;
       pressedThisFrame.clear();
       pinch.fator = 1;
+      pinch.panX = 0;
     },
   };
 }

@@ -92,6 +92,23 @@ function pincarZoom(fator) {
   persistirZoom(estado.partida?.comandos.multiplicarZoom(fator));
 }
 
+/** Metros por segundo que Shift + ← → deslocam a câmera. */
+const VELOCIDADE_PAN_TECLADO = 30;
+
+/**
+ * Move a câmera para os lados sem mexer na minhoca — arrastar dois dedos na
+ * tela (`input.pinch.panX`) ou segurar Shift com ← →. `deltaTela` é em
+ * pixels de tela; o sinal negativo é o que faz "arrastar os dedos pra
+ * direita" parecer agarrar o mapa e puxar — revela o que tinha à esquerda,
+ * como em qualquer app de mapa.
+ */
+function panCameraTela(deltaTela) {
+  if (deltaTela === 0) return;
+  const partida = estado.partida;
+  if (!partida) return;
+  partida.comandos.panCamera(-deltaTela / camera.scale);
+}
+
 // ------------------------------------------------------ dedo ou mouse
 
 const controles = createTouchControls(touch, {
@@ -267,10 +284,15 @@ function comandosContinuos(dt) {
   if (!partida || vezDaIA()) return;
   const { comandos } = partida;
 
-  if (input.isDown('ArrowLeft') || input.isDown('KeyA')) comandos.andar(-1, dt);
-  if (input.isDown('ArrowRight') || input.isDown('KeyD')) comandos.andar(1, dt);
+  // Segurando Shift, ← → deixam de andar e passam a mexer a câmera (ver
+  // `comandosDiscretos`) — sem o "senão" aqui, os dois aconteceriam juntos.
+  const segurandoShift = input.isDown('ShiftLeft') || input.isDown('ShiftRight');
+  if (!segurandoShift) {
+    if (input.isDown('ArrowLeft') || input.isDown('KeyA')) comandos.andar(-1, dt);
+    if (input.isDown('ArrowRight') || input.isDown('KeyD')) comandos.andar(1, dt);
+  }
 
-  const fino = input.isDown('ShiftLeft') || input.isDown('ShiftRight') ? 0.25 : 1;
+  const fino = segurandoShift ? 0.25 : 1;
   if (input.isDown('ArrowUp') || input.isDown('KeyW')) comandos.mirar(1.5 * dt * fino);
   if (input.isDown('ArrowDown') || input.isDown('KeyS')) comandos.mirar(-1.5 * dt * fino);
 
@@ -281,16 +303,25 @@ function comandosContinuos(dt) {
   }
 }
 
-function comandosDiscretos() {
+function comandosDiscretos(dt) {
   if (estado.modo === 'jogando' && input.wasPressed('KeyP')) return pausar();
   if (estado.modo === 'pausado' && input.wasPressed('KeyP')) return retomar();
   if (estado.modo !== 'jogando' || !estado.partida) return;
 
-  // Zoom é visão, não jogada: funciona mesmo na vez da IA, pra quem só
-  // está assistindo — por isso vem antes da guarda de `vezDaIA()` abaixo.
+  // Zoom e câmera são visão, não jogada: funcionam mesmo na vez da IA, pra
+  // quem só está assistindo — por isso vêm antes da guarda de `vezDaIA()`.
   if (input.wasPressed('Minus')) ajustarZoom(-1);
   if (input.wasPressed('Equal')) ajustarZoom(1);
   pincarZoom(input.pinch.fator);
+
+  // Teclado: metros por segundo direto, sem passar pela conversão de pixels
+  // de `panCameraTela` (essa é para o arrasto de dois dedos, que chega em
+  // pixels de tela). ← → aqui já dizem para que lado a câmera olha, sem a
+  // inversão de "arrastar o mapa" que o gesto de toque precisa.
+  const segurandoShift = input.isDown('ShiftLeft') || input.isDown('ShiftRight');
+  if (segurandoShift && input.isDown('ArrowLeft')) estado.partida.comandos.panCamera(-VELOCIDADE_PAN_TECLADO * dt);
+  if (segurandoShift && input.isDown('ArrowRight')) estado.partida.comandos.panCamera(VELOCIDADE_PAN_TECLADO * dt);
+  panCameraTela(input.pinch.panX);
 
   // Pausar continua seu, mas mexer na minhoca que está jogando não — é a vez da IA.
   if (vezDaIA()) return;
@@ -338,8 +369,8 @@ function comandosDiscretos() {
 const loop = createLoop({
   dt: DT_FISICA,
 
-  beginFrame() {
-    comandosDiscretos();
+  beginFrame(elapsed) {
+    comandosDiscretos(elapsed);
   },
 
   step(dt) {
