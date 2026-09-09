@@ -408,41 +408,65 @@ export function desenharMinhoca(ctx, w, camera, { ativa = false, cores } = {}) {
   desenharPlaca(ctx, w, c, cx, base - alturaPx - e * 0.45, e, ativa);
 }
 
+/**
+ * Abaixo desta escala a placa de nome+vida some — sobra só a seta de quem
+ * está jogando. É o caso de "ver o mapa" (segurar M): o corpo da minhoca já
+ * vira um pontinho de poucos pixels, mas a placa tem um piso de fonte
+ * legível (`fonte` abaixo nunca fica menor que 10px) que não encolhe junto
+ * — numa tela cheia de minhocas próximas, essas placas de tamanho fixo se
+ * empilham umas em cima das outras antes mesmo dos pontinhos se tocarem.
+ * O jogo normal nunca chega perto disto: mesmo no zoom mais afastado que dá
+ * pra escolher (`ZOOM_MIN` em match.js), a escala de mira não cai abaixo de
+ * 13 — só a visão do mapa inteiro passa desse limite.
+ */
+const LIMITE_PLACA_COMPACTA = 10;
+
+/** Abaixo de `LIMITE_PLACA_COMPACTA`, o tamanho da seta não pode encolher
+ * junto com a escala — senão ela também vira invisível de tão pequena. */
+const ESCALA_MINIMA_SETA = 14;
+
 function desenharPlaca(ctx, w, cores, cx, cy, escala, ativa) {
-  const fonte = Math.max(10, Math.min(16, escala * 0.42));
-  ctx.save();
-  ctx.font = `600 ${fonte}px system-ui, sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
+  let altura = 0;
 
-  const texto = `${w.nome}  ${Math.max(0, Math.round(w.vida))}`;
-  const largura = ctx.measureText(texto).width + fonte * 0.9;
-  const altura = fonte * 1.5;
+  if (escala >= LIMITE_PLACA_COMPACTA) {
+    const fonte = Math.max(10, Math.min(16, escala * 0.42));
+    altura = fonte * 1.5;
+    ctx.save();
+    ctx.font = `600 ${fonte}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
 
-  ctx.fillStyle = 'rgba(9, 16, 26, 0.62)';
-  ctx.beginPath();
-  ctx.roundRect(cx - largura / 2, cy - altura, largura, altura, fonte * 0.4);
-  ctx.fill();
+    const texto = `${w.nome}  ${Math.max(0, Math.round(w.vida))}`;
+    const largura = ctx.measureText(texto).width + fonte * 0.9;
 
-  if (ativa) {
-    ctx.strokeStyle = cores.capacete;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    ctx.fillStyle = 'rgba(9, 16, 26, 0.62)';
+    ctx.beginPath();
+    ctx.roundRect(cx - largura / 2, cy - altura, largura, altura, fonte * 0.4);
+    ctx.fill();
+
+    if (ativa) {
+      ctx.strokeStyle = cores.capacete;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = cores.corpo;
+    ctx.fillText(texto, cx, cy - fonte * 0.28);
+    ctx.restore();
   }
 
-  ctx.fillStyle = cores.corpo;
-  ctx.fillText(texto, cx, cy - fonte * 0.28);
-  ctx.restore();
-
-  // Seta indicando de quem é a vez.
+  // Seta indicando de quem é a vez — continua no modo compacto, com um
+  // tamanho mínimo próprio, porque é a única pista que sobra pra achar sua
+  // minhoca de longe.
   if (ativa) {
+    const e = Math.max(escala, ESCALA_MINIMA_SETA);
     const t = Date.now() / 300;
-    const oscila = Math.sin(t) * escala * 0.12;
+    const oscila = Math.sin(t) * e * 0.12;
     ctx.fillStyle = cores.capacete;
     ctx.beginPath();
-    ctx.moveTo(cx, cy - altura - escala * 0.18 + oscila);
-    ctx.lineTo(cx - escala * 0.2, cy - altura - escala * 0.5 + oscila);
-    ctx.lineTo(cx + escala * 0.2, cy - altura - escala * 0.5 + oscila);
+    ctx.moveTo(cx, cy - altura - e * 0.18 + oscila);
+    ctx.lineTo(cx - e * 0.2, cy - altura - e * 0.5 + oscila);
+    ctx.lineTo(cx + e * 0.2, cy - altura - e * 0.5 + oscila);
     ctx.closePath();
     ctx.fill();
   }
