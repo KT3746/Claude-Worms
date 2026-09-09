@@ -20,9 +20,25 @@ export function createCamera() {
     shakeEnabled: true,
     bounds: null, // {minX, maxX, minY, maxY} em metros — limites do mapa
 
+    // Pedaço da tela (em pixels) coberto por HUD e botões de toque, dos
+    // quatro lados. `clampToBounds` some com o alvo debaixo do canto do
+    // mapa em vez de deixá-lo espremido atrás de um botão: perto da borda,
+    // a minhoca ativa é o alvo mais comum de ficar ali (ver `setInsets`).
+    insets: { left: 0, right: 0, top: 0, bottom: 0 },
+
     /** Trava a câmera dentro do mapa. `null` solta de novo. */
     setBounds(bounds) {
       cam.bounds = bounds;
+    },
+
+    /**
+     * Quanto de cada lado da tela está ocupado por UI por cima do jogo —
+     * cruzeta, botões, HUD. Chamado todo quadro com as medidas de verdade
+     * do DOM (ver `reservaDosControles` em main.js): eles encolhem e somem
+     * junto com a tela e com o toque, uma constante fixa aqui erraria cedo.
+     */
+    setInsets(insets) {
+      Object.assign(cam.insets, insets);
     },
 
     resize(width, height) {
@@ -91,6 +107,13 @@ export function createCamera() {
   /**
    * Mantém a vista dentro do mapa. Se o mapa for menor que a tela naquele
    * eixo, centraliza — é melhor ver a borda no meio do que grudada num canto.
+   *
+   * Perto de uma borda do mapa o alvo (a minhoca ativa, o mais das vezes)
+   * seria empurrado até a beirada da tela — que é bem onde moram os botões
+   * de toque e o HUD. `insets` encolhe a folga de cada lado por essa mesma
+   * medida, então a borda do mapa para ali no botão, não atrás dele: quem
+   * estava "na extrema direita" some por trás do painel de armas, não por
+   * falta de zoom nem de câmera — falta essa folga.
    */
   function clampToBounds() {
     const b = cam.bounds;
@@ -98,12 +121,20 @@ export function createCamera() {
 
     const meiaL = cam.halfWidth;
     const meiaA = cam.halfHeight;
+    const { left, right, top, bottom } = cam.insets;
 
-    if (b.maxX - b.minX <= meiaL * 2) cam.x = (b.minX + b.maxX) / 2;
-    else cam.x = Math.max(b.minX + meiaL, Math.min(b.maxX - meiaL, cam.x));
+    const livreEsq = Math.max(0, meiaL - left / cam.scale);
+    const livreDir = Math.max(0, meiaL - right / cam.scale);
+    // Mundo com y para cima, tela com y para baixo: o topo da tela mostra o
+    // maior y do mundo, e o rodapé, o menor.
+    const livreCima = Math.max(0, meiaA - top / cam.scale);
+    const livreBaixo = Math.max(0, meiaA - bottom / cam.scale);
 
-    if (b.maxY - b.minY <= meiaA * 2) cam.y = (b.minY + b.maxY) / 2;
-    else cam.y = Math.max(b.minY + meiaA, Math.min(b.maxY - meiaA, cam.y));
+    if (b.maxX - b.minX <= livreEsq + livreDir) cam.x = (b.minX + b.maxX) / 2;
+    else cam.x = Math.max(b.minX + livreEsq, Math.min(b.maxX - livreDir, cam.x));
+
+    if (b.maxY - b.minY <= livreCima + livreBaixo) cam.y = (b.minY + b.maxY) / 2;
+    else cam.y = Math.max(b.minY + livreBaixo, Math.min(b.maxY - livreCima, cam.y));
   }
 
   return cam;

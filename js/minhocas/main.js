@@ -384,6 +384,10 @@ const loop = createLoop({
     // tela), então é aqui, não só nas transições de modo, que os botões de
     // toque precisam reagir a "agora é a IA que joga".
     sincronizarControles();
+    // Antes de mover a câmera (dentro de `update`), pra ela já saber quanto
+    // de tela os botões cobrem agora — senão a minhoca ativa perto de uma
+    // borda do mapa é empurrada até debaixo deles em vez de parar antes.
+    camera.setInsets(reservaDaCamera());
     estado.partida.update(dt);
     aplicarVisaoDoMapa();
     if (estado.partida.fimDeJogo) terminar();
@@ -399,7 +403,11 @@ const loop = createLoop({
         // na vez da IA mesmo para quem está no dedo (e aí a dica de teclado
         // não faria sentido nenhum). O layout, por outro lado, só precisa
         // desviar do que está ocupando a tela agora.
-        const opcoes = { toque: estado.entrada === 'dedo', ...reservaDosControles() };
+        const opcoes = {
+          toque: estado.entrada === 'dedo',
+          reservaTopo: RESERVA_TOPO_HUD,
+          ...reservaDosControles(),
+        };
         desenharHud(ctx, estado.partida, camera, opcoes);
         if (estado.modo === 'jogando') desenharDica(ctx, estado.partida, camera, opcoes);
       }
@@ -430,6 +438,20 @@ function reservaDosControles() {
     reservaInferior: Math.max(cruz.height, direita.height) + 18,
     reservaLateral: Math.max(cruz.width, direita.width) + 18,
   };
+}
+
+/**
+ * O mesmo `reservaDosControles`, em forma de `insets` de câmera: a cruzeta
+ * mora à esquerda e o resto dos botões (arma, zoom, FOGO) à direita, mas
+ * ambos os lados reservam o maior dos dois — sobra um pouco de tela do lado
+ * sem botão, e é um preço bem menor que a minhoca ativa desaparecer atrás
+ * do botão do outro. O topo tem sempre o placar e o relógio por cima do
+ * jogo, toque ou não, por isso a folga ali não depende de `controles.visivel`.
+ */
+const RESERVA_TOPO_HUD = 90;
+function reservaDaCamera() {
+  const { reservaInferior, reservaLateral } = reservaDosControles();
+  return { left: reservaLateral, right: reservaLateral, top: RESERVA_TOPO_HUD, bottom: reservaInferior };
 }
 
 /** Fundo tranquilo por trás do menu: um morro e o mar. */

@@ -62,7 +62,7 @@ export function desenharHud(ctx, partida, camera, opcoes = {}) {
   if (estado.tempoMensagem > 0) desenharMensagem(ctx, estado, camera);
   if (turnos.fase === FASE.RECUANDO) desenharRecuo(ctx, turnos, camera);
   if (turnos.morteSubita) desenharMorteSubita(ctx, camera);
-  desenharSetaForaDaTela(ctx, estado, camera);
+  desenharSetaForaDaTela(ctx, estado, camera, opcoes);
 
   ctx.restore();
 }
@@ -229,19 +229,27 @@ function desenharMorteSubita(ctx, camera) {
   ctx.fillText('MORTE SÚBITA', camera.width / 2, estreito ? camera.height - 76 : camera.height - 30);
 }
 
-/** Seta na borda quando a minhoca da vez está fora da tela. */
-function desenharSetaForaDaTela(ctx, estado, camera) {
+/**
+ * Seta na borda quando a minhoca da vez está fora da tela — ou só fora da
+ * parte visível de verdade, atrás de HUD e botões de toque, o que dá no
+ * mesmo para quem está tentando enxergá-la. As mesmas medidas que afastam a
+ * câmera desses cantos (ver `setInsets`, em `camera.js`) valem aqui: sem
+ * elas a seta ficaria escondida bem no momento em que mais faria falta.
+ */
+function desenharSetaForaDaTela(ctx, estado, camera, opcoes = {}) {
   const w = estado.ativa;
   if (!w?.vivo) return;
 
   const p = camera.toScreen(w.x, w.y + ALTURA_MINHOCA);
-  const margem = 30;
-  if (p.x >= margem && p.x <= camera.width - margem && p.y >= margem && p.y <= camera.height - margem) {
+  const margemX = 30 + (opcoes.reservaLateral ?? 0);
+  const margemTopo = 30 + (opcoes.reservaTopo ?? 0);
+  const margemBase = 30 + (opcoes.reservaInferior ?? 0);
+  if (p.x >= margemX && p.x <= camera.width - margemX && p.y >= margemTopo && p.y <= camera.height - margemBase) {
     return;
   }
 
-  const x = Math.max(margem, Math.min(camera.width - margem, p.x));
-  const y = Math.max(margem, Math.min(camera.height - margem, p.y));
+  const x = Math.max(margemX, Math.min(camera.width - margemX, p.x));
+  const y = Math.max(margemTopo, Math.min(camera.height - margemBase, p.y));
   const angulo = Math.atan2(p.y - y, p.x - x);
 
   ctx.save();
