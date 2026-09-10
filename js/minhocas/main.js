@@ -242,7 +242,10 @@ function terminar() {
   estado.modo = 'fim';
   pauseButton.hidden = true;
   sincronizarControles();
-  sfx.fanfare();
+  // Sem time em pé (todos afogados no mesmo turno, por exemplo) não é uma
+  // vitória de ninguém — a fanfarra ali soaria fora de lugar.
+  if (partida.estado.vencedor) sfx.fanfare();
+  else sfx.empate();
   screens.fim({
     vencedor: partida.estado.vencedor,
     semente: partida.estado.semente,

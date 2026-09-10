@@ -44,6 +44,11 @@ const ZOOM_MIN = 0.15;
 const ZOOM_MAX = 1.2;
 const PASSO_ZOOM = 0.1;
 
+/** Cadência dos sons de passo e do sopro do jetpack, em segundos — rápido
+ * demais e vira um zumbido; devagar demais e ninguém associa o som ao gesto. */
+const INTERVALO_PASSO = 0.28;
+const INTERVALO_JATO = 0.16;
+
 /** Forma de uma nuvem: deslocamento e raio de cada bolha, em unidades de escala. */
 const BOLHAS_DE_NUVEM = [
   [-1.6, 0.15, 0.85],
@@ -147,6 +152,10 @@ export function createMatch({
     // Desvio horizontal manual da câmera em relação à minhoca ativa — ver
     // `comandos.panCamera`. Zerado a cada novo turno, em `aoPreparar`.
     panOffsetX: 0,
+    // Contadores regressivos dos sons de passo e de sopro do jetpack — ver
+    // `INTERVALO_PASSO`/`INTERVALO_JATO` e os comandos `andar`/`impulsoJetpack`.
+    tempoPasso: 0,
+    tempoJato: 0,
     slowmo: 1,
     tempoAgua: 0,
     fimDeJogo: false,
@@ -234,7 +243,7 @@ export function createMatch({
       if (w.y < estado.nivelAgua) {
         w.vivo = false;
         respingar(w.x, estado.nivelAgua);
-        sfx.respingo();
+        sfx.respingo(panDe(w.x));
         anunciar(`${w.nome} se afogou.`);
         houve = true;
         continue;
@@ -293,7 +302,7 @@ export function createMatch({
       if (w === estado.ativa && estado.corda) largarCorda();
 
       Worm.empurrar(w, efeito.impulso.x, efeito.impulso.y);
-      if (efeito.dano > 4) sfx.ai();
+      if (efeito.dano > 4) sfx.ai(panDe(w.x));
     }
 
     // Detritos com a cor de quem foi atingido, fumaça e clarão.
@@ -328,7 +337,7 @@ export function createMatch({
     }
 
     camera.addShake(Math.min(1, arma.raio * 0.22));
-    sfx.explosao(arma.raio);
+    sfx.explosao(arma.raio, panDe(x));
 
     // Granada de fragmentação: a explosão principal acontece igual à de
     // qualquer outra granada, e além dela nascem pedaços menores que se
@@ -347,6 +356,18 @@ export function createMatch({
         }));
       }
     }
+  }
+
+  /**
+   * Posição horizontal de um ponto do mundo, convertida em pan estéreo (-1
+   * esquerda, 1 direita) — pra explosão, tiro ou respingo ganharem lugar no
+   * espaço, não só volume. Usa a câmera de verdade (não a posição no mapa),
+   * então uma explosão fora da tela some quase inteira pro lado certo, e uma
+   * bem no centro da mira sai igual nos dois ouvidos.
+   */
+  function panDe(x) {
+    const s = camera.toScreen(x, 0);
+    return Math.max(-1, Math.min(1, (s.x - camera.width / 2) / (camera.width / 2)));
   }
 
   function respingar(x, y) {
@@ -385,7 +406,21 @@ export function createMatch({
         estado.ativa.direcao = dir;
         return;
       }
-      Worm.andar(estado.ativa, terreno, dir, dt);
+
+      const w = estado.ativa;
+      const xAntes = w.x;
+      Worm.andar(w, terreno, dir, dt);
+
+      // Passo sonoro só quando anda de verdade (não contra uma parede ou no
+      // ar) e num ritmo de passada, não a cada quadro de física — senão
+      // vira um zumbido contínuo enquanto a tecla fica segurada.
+      if (w.x !== xAntes) {
+        estado.tempoPasso -= dt;
+        if (estado.tempoPasso <= 0) {
+          estado.tempoPasso = INTERVALO_PASSO;
+          sfx.passo(panDe(w.x));
+        }
+      }
     },
 
     mirar(delta) {
@@ -483,7 +518,9 @@ export function createMatch({
 
     trocarArma(id) {
       if (!turnos.podeAtirar || estado.carregando || estado.corda) return;
-      estado.arma = armaPorId(id);
+      const nova = armaPorId(id);
+      if (nova !== estado.arma) sfx.trocarArma();
+      estado.arma = nova;
     },
 
     /** Percorre o arsenal com `[` `]`. Não pula para a arma oculta do cacho. */
@@ -493,6 +530,7 @@ export function createMatch({
       do {
         proxima = armaSeguinte(proxima, direcao);
       } while (proxima.oculta && proxima !== estado.arma);
+      if (proxima !== estado.arma) sfx.trocarArma();
       estado.arma = proxima;
     },
 
@@ -545,6 +583,14 @@ export function createMatch({
         w.tempoNoAr = 0;
       }
       w.vy += estado.arma.empuxo * gasto;
+
+      // Rajadas curtas, não um sopro contínuo — chamado todo quadro que o
+      // botão fica segurado, então sem esta cadência viraria um zumbido.
+      estado.tempoJato -= dt;
+      if (estado.tempoJato <= 0) {
+        estado.tempoJato = INTERVALO_JATO;
+        sfx.jetpack(panDe(w.x));
+      }
     },
   };
 
@@ -577,7 +623,7 @@ export function createMatch({
     nova.L = Math.max(nova.limiteMin, Math.min(nova.limiteMax, nova.L));
     estado.corda = nova;
     w.estado = 'corda';
-    sfx.corda();
+    sfx.corda(panDe(w.x));
   }
 
   /** Larga a corda: a minhoca sai voando com a velocidade que tinha. */
@@ -611,7 +657,7 @@ export function createMatch({
     w.vy = 0;
     w.estado = 'voando';
     w.quedaMaxima = 0;
-    sfx.teleporte();
+    sfx.teleporte(panDe(w.x));
   }
 
   function soltar() {
@@ -639,7 +685,7 @@ export function createMatch({
         dono: w,
         pavio: arma.tipo === 'granada' ? estado.pavio : arma.pavio,
       }));
-      if (!solta) sfx.disparo();
+      if (!solta) sfx.disparo(panDe(boca.x));
     }
 
     estado.carga = 0;
@@ -690,11 +736,18 @@ export function createMatch({
         alvo.piscar = 0.4;
         const dx = alvo.x - w.x || w.direcao;
         Worm.empurrar(alvo, Math.sign(dx) * (arma.impulso ?? 0), (arma.impulso ?? 0) * 0.3);
+        sfx.ai(panDe(alvo.x)); // feedback imediato de acerto, além do estampido do tiro
       }
       if (arma.furoRaio) terreno.explodir(pontoFinal.x, pontoFinal.y, arma.furoRaio);
     }
 
-    sfx.disparo();
+    // Escopeta e sniper têm identidade sonora própria — sem isso os dois
+    // soavam igual à bazuca, apesar de serem instantâneos e bem diferentes
+    // entre si (estampido curto vs. estalo seco de longo alcance).
+    const pan = panDe(boca.x);
+    if (arma.id === 'escopeta') sfx.escopeta(pan);
+    else if (arma.id === 'sniper') sfx.sniper(pan);
+    else sfx.disparo(pan);
   }
 
   /**
@@ -753,7 +806,7 @@ export function createMatch({
       if (queda) {
         w.vida -= queda.dano;
         w.piscar = 0.4;
-        sfx.ai();
+        sfx.ai(panDe(w.x));
       }
       // Passou da linha d'água: some na hora, o resto resolve na fase certa.
       if (w.vivo && w.y < estado.nivelAgua - 0.6) {
@@ -804,12 +857,20 @@ export function createMatch({
     for (let i = estado.projeteis.length - 1; i >= 0; i -= 1) {
       const p = estado.projeteis[i];
       const antes = Math.hypot(p.vx, p.vy);
+      const pavioAntes = p.pavio;
       const r = atualizarProjetil(p, terreno, dt, ambiente());
 
       // A mina não explode ao tocar — só quando algo vivo chega perto, e só
       // depois do atraso de armar (senão explode em quem acabou de largá-la).
+      // Um bipe avisa esse instante exato: sem som o "arma sozinha" da mina
+      // é mudo, e ninguém sabe quando ela passou a valer.
+      if (p.arma.proximidade && !p.armada && p.tempoVivo > (p.arma.atraso ?? 0)) {
+        p.armada = true;
+        sfx.minaArma(panDe(p.x));
+      }
+
       let explodiu = r === 'explodir';
-      if (!explodiu && p.arma.proximidade && p.tempoVivo > (p.arma.atraso ?? 0)) {
+      if (!explodiu && p.armada) {
         for (const w of todas) {
           if (!w.vivo) continue;
           if (Math.hypot(w.x - p.x, w.y - p.y) < p.arma.proximidade) {
@@ -851,12 +912,20 @@ export function createMatch({
           drag: 1.8,
         });
       }
-      if (antes > 2 && Math.hypot(p.vx, p.vy) < antes * 0.7 && p.arma.pavio) sfx.quique();
+      if (antes > 2 && Math.hypot(p.vx, p.vy) < antes * 0.7 && p.arma.pavio) sfx.quique(panDe(p.x));
+
+      // Tique do pavio a cada segundo inteiro que passa — o mesmo instante
+      // em que o desenho já pisca mais rápido (ver `desenharProjetil`),
+      // agora também em som. Não toca junto com a explosão: se o pavio
+      // zerou neste quadro, `explodiu` (por `r === 'explodir'`) já é `true`.
+      if (!explodiu && p.arma.pavio && pavioAntes > 0 && Math.ceil(p.pavio) < Math.ceil(pavioAntes)) {
+        sfx.pavio(Math.ceil(p.pavio), panDe(p.x));
+      }
 
       // Caiu na água: apaga sem explodir.
       if (p.y < estado.nivelAgua) {
         respingar(p.x, estado.nivelAgua);
-        sfx.respingo();
+        sfx.respingo(panDe(p.x));
         estado.projeteis.splice(i, 1);
         continue;
       }
@@ -866,7 +935,7 @@ export function createMatch({
         const { largura, altura } = p.arma.construir;
         terreno.construir(p.x, p.y, largura, altura);
         camera.addShake(0.12);
-        sfx.quique();
+        sfx.quique(panDe(p.x));
         estado.projeteis.splice(i, 1);
         continue;
       }
@@ -890,7 +959,9 @@ export function createMatch({
       if (c.estado !== 'voando') Worm.andar(c, terreno, c.direcao, dt);
 
       c.tempoVivo = (c.tempoVivo ?? 0) + dt;
+      const pavioAntes = c.pavio;
       c.pavio -= dt;
+      if (c.pavio > 0 && Math.ceil(c.pavio) < Math.ceil(pavioAntes)) sfx.pavio(Math.ceil(c.pavio), panDe(c.x));
 
       let explodiu = c.pavio <= 0;
       if (!explodiu && c.arma.proximidade && c.tempoVivo > 0.5) {
@@ -905,7 +976,7 @@ export function createMatch({
 
       if (c.y < estado.nivelAgua) {
         respingar(c.x, estado.nivelAgua);
-        sfx.respingo();
+        sfx.respingo(panDe(c.x));
         estado.criaturas.splice(i, 1);
         continue;
       }
