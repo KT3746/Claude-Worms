@@ -1,7 +1,7 @@
 # Minhocas
 
 Artilharia por turnos no estilo *Worms*: equipes de minhocas de capacete, uma
-jogando por vez, com um arsenal de 14 armas e ferramentas — da bazuca à corda
+jogando por vez, com um arsenal de 15 armas e ferramentas — da bazuca à corda
 ninja — num cenário que se destrói a cada tiro, até sobrar uma equipe em pé.
 
 Mesma casca do Arqueiro: **HTML5 Canvas, ES modules, sem build, sem
@@ -78,6 +78,7 @@ nenhum.
 | Rifle sniper | hitscan | 1 tiro instantâneo, longo alcance |
 | Ovelha | dirigível | pousa e anda sozinha até explodir |
 | Míssil guiado | dirigível | voo reto na mira, ignora vento e gravidade |
+| Ataque aéreo | aéreo | não sai do cano — a mira escolhe a coluna; várias bombas caem retas, sem vento |
 | Corda ninja | utilitário | pivôs empilhados — balança e prende de novo nas quinas |
 | Jetpack | utilitário | voo controlado, combustível recarrega a cada turno |
 | Teleporte | utilitário | aparece instantaneamente onde a mira aponta |
@@ -193,11 +194,14 @@ tiro encontrado erraria feio e o alvo está longe — o suficiente para não
 travar contra um adversário fora de alcance, não para jogar com tática.
 
 **O que ela ainda não faz:** corda ninja, jetpack, teleporte, ovelha, míssil
-guiado, minas, dinamite e viga — só o arsenal com trajetória calculável. Não
-pula, não recua depois de atirar, não protege uma minhoca machucada, e pode
-andar para dentro de um buraco ou da água no caminho até o alvo.
+guiado, minas, dinamite, viga e ataque aéreo — só o arsenal com trajetória
+calculável. Não pula, não recua depois de atirar, não protege uma minhoca
+machucada, e pode andar para dentro de um buraco ou da água no caminho até
+o alvo.
 
 ## O que ainda não existe
 
-Falta o ataque aéreo e as caixas de paraquedas. O desenho de cada um está em
-[`docs/PLANO-TRINCHEIRA.md`](docs/PLANO-TRINCHEIRA.md).
+Faltam as caixas de paraquedas. O desenho está em
+[`docs/PLANO-TRINCHEIRA.md`](docs/PLANO-TRINCHEIRA.md) (documento antigo,
+de antes do jogo se chamar Minhocas — o resto do plano ali não bate mais
+com o código, mas essa peça continua de fora).

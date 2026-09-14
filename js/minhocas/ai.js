@@ -11,12 +11,13 @@
  *
  * ARSENAL: só o que dá para mirar com uma trajetória calculável — bazuca,
  * morteiro, granada, fragmentação, escopeta, sniper. Corda, jetpack,
- * teleporte, ovelha, míssil guiado, minas, dinamite e viga ficam de fora:
- * cada um tem uma estratégia própria grande o bastante para ser sua própria
- * entrega (mirar uma saliência para prender a corda, decidir quando pousar a
- * ovelha, quando vale a pena se expor para plantar uma mina...). A IA nunca
- * troca para essas armas, então elas continuam existindo só para quem joga
- * de verdade.
+ * teleporte, ovelha, míssil guiado, minas, dinamite, viga e o ataque aéreo
+ * ficam de fora: cada um tem uma estratégia própria grande o bastante para
+ * ser sua própria entrega (mirar uma saliência para prender a corda,
+ * decidir quando pousar a ovelha, quando vale a pena se expor para plantar
+ * uma mina, onde vale a pena chamar um ataque aéreo em vez de um tiro
+ * comum...). A IA nunca troca para essas armas, então elas continuam
+ * existindo só para quem joga de verdade.
  *
  * MOVIMENTO: a IA só anda pra fugir de um alvo fora de alcance — nunca pula,
  * nunca busca cobertura, nunca recua depois de atirar. Quando o melhor tiro

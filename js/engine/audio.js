@@ -189,6 +189,14 @@ export const sfx = {
     tone({ freq: 500, sweepTo: 700, duration: 0.06, volume: 0.1, type: 'square', pan });
   },
 
+  /** Ataque aéreo chamado — um zunido grave de motor, bem diferente do
+   * estampido seco de um tiro comum: aqui ninguém atirou ainda, um avião
+   * é que está vindo. */
+  aviao(pan = null) {
+    noiseBurst({ duration: 0.5, volume: 0.2, filterHz: 500, type: 'lowpass', pan });
+    tone({ freq: 150, sweepTo: 210, duration: 0.5, volume: 0.09, type: 'sawtooth', pan });
+  },
+
   /** Teleporte — um "warp" subindo rápido. */
   teleporte(pan = null) {
     tone({ freq: 220, sweepTo: 1400, duration: 0.22, volume: 0.16, type: 'sine', pan });

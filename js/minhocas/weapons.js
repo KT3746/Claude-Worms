@@ -2,11 +2,10 @@
  * O arsenal, em tabela — no mesmo espírito de `js/game/levels.js`.
  *
  * O motor sabe executar cada `tipo`; uma arma nova é uma linha aqui, não um
- * arquivo novo. Os seis tipos previstos são `projetil`, `granada`, `hitscan`,
- * `soltavel`, `dirigivel` e `utilitario`. Esta entrega cobre os cinco
- * primeiros com armas de verdade; `utilitario` (corda ninja, jetpack,
- * teleporte, viga) tem mecânica própria grande o bastante para ser o marco
- * seguinte, e por isso fica de fora daqui.
+ * arquivo novo. Tipos: `projetil`, `granada`, `hitscan`, `soltavel`,
+ * `dirigivel`, `utilitario` e `aereo` (ataque aéreo — não sai do cano de
+ * ninguém; a mira só escolhe a coluna onde as bombas caem, ver
+ * `chamarAtaqueAereo` em match.js).
  */
 
 export const ARMAS = [
@@ -173,6 +172,23 @@ export const ARMAS = [
     dica: 'Voa reto na mira. Ignora vento e gravidade.',
   },
   {
+    id: 'aereo',
+    nome: 'Ataque aéreo',
+    tipo: 'aereo',
+    municao: Infinity,
+    vento: false,             // as bombas caem retas: quem escolhe a coluna é a mira, não o clima
+    bombas: 4,                // quantas bombas por chamado
+    espalhamentoBombas: 3,    // metros entre uma bomba e a próxima
+    raio: 2.6,
+    dano: 34,
+    impulso: 9,
+    alcanceMax: 60,           // até onde a mira aponta no chão, como um hitscan de longo alcance
+    encerraTurno: true,
+    miravel: true,
+    dica: 'Mira a coluna onde cai. As bombas caem retas, sem vento.',
+    dicaToque: 'Mira a coluna onde cai. As bombas caem retas.',
+  },
+  {
     id: 'corda',
     nome: 'Corda ninja',
     tipo: 'utilitario',
@@ -239,6 +255,23 @@ export const MINI_FRAGMENTO = {
   impulso: 6,
   restituicao: 0.3,
   atrito: 0.4,
+  oculta: true,
+};
+
+/**
+ * As bombas de um ataque aéreo. Reaproveita o tipo `projetil` — mesmo
+ * desenho (o "foguete" aponta pra onde vai, e cair reto já o deixa de nariz
+ * pra baixo) e o mesmo rastro de fumaça de qualquer outro projétil com
+ * motor — só a origem é diferente de todo o resto do arsenal: não sai do
+ * cano de ninguém. Raio/dano/impulso vêm da arma `aereo` de verdade no
+ * momento do chamado (ver `chamarAtaqueAereo`, em match.js); aqui só o que
+ * nunca muda entre um chamado e outro.
+ */
+export const BOMBA_AEREA = {
+  id: 'bomba-aerea',
+  nome: 'Bomba',
+  tipo: 'projetil',
+  vento: false,
   oculta: true,
 };
 

@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ARMAS, MINI_FRAGMENTO, armaPorId, indiceDaArma, armaSeguinte } from '../js/minhocas/weapons.js';
+import { ARMAS, MINI_FRAGMENTO, BOMBA_AEREA, armaPorId, indiceDaArma, armaSeguinte } from '../js/minhocas/weapons.js';
 
-const TIPOS_VALIDOS = new Set(['projetil', 'granada', 'hitscan', 'soltavel', 'dirigivel', 'utilitario']);
+const TIPOS_VALIDOS = new Set([
+  'projetil', 'granada', 'hitscan', 'soltavel', 'dirigivel', 'utilitario', 'aereo',
+]);
 
 test('toda arma tem um id único e um tipo reconhecido pelo motor', () => {
   const ids = new Set();
@@ -110,6 +112,22 @@ test('a granada de fragmentação declara o cacho de submunições', () => {
 test('o fragmento do cacho não aparece no arsenal do jogador', () => {
   assert.equal(ARMAS.some((a) => a.id === MINI_FRAGMENTO.id), false);
   assert.equal(MINI_FRAGMENTO.oculta, true);
+});
+
+test('o ataque aéreo declara quantas bombas solta e sem sofrer vento', () => {
+  const aereo = armaPorId('aereo');
+  assert.equal(aereo.tipo, 'aereo');
+  assert.equal(aereo.vento, false, 'quem decide a coluna é a mira, não o clima');
+  assert.ok(aereo.bombas >= 2, 'um ataque aéreo de uma bomba só não parece um ataque aéreo');
+  assert.ok(aereo.espalhamentoBombas > 0);
+  assert.ok(aereo.alcanceMax > 0, 'sem alcance, a mira não alcançaria o outro lado do mapa');
+});
+
+test('a bomba do ataque aéreo não aparece no arsenal do jogador', () => {
+  assert.equal(ARMAS.some((a) => a.id === BOMBA_AEREA.id), false);
+  assert.equal(BOMBA_AEREA.oculta, true);
+  assert.equal(BOMBA_AEREA.tipo, 'projetil', 'reaproveita o desenho e o rastro de fumaça do foguete');
+  assert.equal(BOMBA_AEREA.vento, false);
 });
 
 test('armaPorId cai na primeira arma para um id desconhecido', () => {

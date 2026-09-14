@@ -12,7 +12,7 @@ import { sfx } from '../engine/audio.js';
 import { gerarTerreno } from './terrain-gen.js';
 import { createTerrain } from './terrain.js';
 import { createTurnMachine, FASE } from './turn.js';
-import { ARMAS, MINI_FRAGMENTO, armaPorId, armaSeguinte } from './weapons.js';
+import { ARMAS, MINI_FRAGMENTO, BOMBA_AEREA, armaPorId, armaSeguinte } from './weapons.js';
 import { createProjectile, atualizarProjetil, projetilParado, desenharProjetil } from './projectile.js';
 import { explosao } from './damage.js';
 import { GRAVIDADE, ARRASTO, interseccaoSegmentoCirculo } from './ballistics.js';
@@ -48,6 +48,11 @@ const PASSO_ZOOM = 0.1;
  * demais e vira um zumbido; devagar demais e ninguém associa o som ao gesto. */
 const INTERVALO_PASSO = 0.28;
 const INTERVALO_JATO = 0.16;
+
+/** O "avião" do ataque aéreo é só efeito visual — nunca colide com nada.
+ * Cruza a tela nesta velocidade e some sozinho depois deste tempo. */
+const VELOCIDADE_AVIAO = 30; // m/s
+const DURACAO_AVIAO = 2.6; // s
 
 /** Forma de uma nuvem: deslocamento e raio de cada bolha, em unidades de escala. */
 const BOLHAS_DE_NUVEM = [
@@ -156,6 +161,9 @@ export function createMatch({
     // `INTERVALO_PASSO`/`INTERVALO_JATO` e os comandos `andar`/`impulsoJetpack`.
     tempoPasso: 0,
     tempoJato: 0,
+    // O "avião" cosmético do ataque aéreo enquanto cruza a tela — null fora
+    // de um chamado. Ver `chamarAtaqueAereo` e `atualizarAviao`.
+    aviao: null,
     slowmo: 1,
     tempoAgua: 0,
     fimDeJogo: false,
@@ -182,6 +190,7 @@ export function createMatch({
         estado.vento = Math.round(rng.range(-9, 9) * 10) / 10;
         estado.ativa = proximaMinhoca();
         estado.panOffsetX = 0; // cada turno começa centrado — nenhum passeio de câmera sobra do turno anterior
+        estado.aviao = null; // segurança: não devia sobrar de um turno pro outro, mas evita um avião fantasma
         if (estado.ativa) {
           camera.lookAt(estado.ativa.x, estado.ativa.y + 1, 26 * estado.zoom);
           sfx.vez();
@@ -239,6 +248,17 @@ export function createMatch({
 
     for (const w of todas) {
       if (!w.vivo) continue;
+
+      // Uma minhoca que morre ainda presa na corda não pode deixar a corda
+      // pendurada nela: sem isto, `estado.corda` continuaria apontando para
+      // um corpo morto, e o jogo nunca mais conseguiria soltar nem prender
+      // de novo. `detonar()` já cobre a morte por dano (mesma checagem,
+      // repetida para cada minhoca afetada pelo próprio estilhaço, e a
+      // vítima sempre está no raio da sua própria explosão) — aqui cobre
+      // também o afogamento, que nunca passa por `detonar()`.
+      if (w === estado.ativa && estado.corda && (w.y < estado.nivelAgua || w.vida <= 0)) {
+        largarCorda();
+      }
 
       if (w.y < estado.nivelAgua) {
         w.vivo = false;
@@ -555,8 +575,9 @@ export function createMatch({
       }
       if (arma.acao === 'jetpack') return; // liga com impulsoJetpack(), não por aqui
 
-      // Soltável e hitscan não têm força para acumular: disparam no toque.
-      if (arma.tipo === 'soltavel' || arma.tipo === 'hitscan') {
+      // Soltável, hitscan e ataque aéreo não têm força para acumular:
+      // disparam no toque (o aéreo nem sai do cano — não tem o que carregar).
+      if (arma.tipo === 'soltavel' || arma.tipo === 'hitscan' || arma.tipo === 'aereo') {
         soltar();
         return;
       }
@@ -669,6 +690,8 @@ export function createMatch({
 
     if (arma.tipo === 'hitscan') {
       disparoHitscan(w, arma);
+    } else if (arma.tipo === 'aereo') {
+      chamarAtaqueAereo(w, arma);
     } else if (arma.tipo === 'dirigivel' && arma.modo === 'andar') {
       lancarOvelha(w, arma);
     } else {
@@ -751,6 +774,48 @@ export function createMatch({
   }
 
   /**
+   * Ataque aéreo: não sai do cano da minhoca — a mira só decide a coluna
+   * onde cai, do mesmo jeito que um hitscan decide onde bate (mesma conta
+   * de `alvoX` que `disparoHitscan` usa para o alcance). `arma.bombas`
+   * bombas nascem já lá em cima e caem retas — `BOMBA_AEREA.vento = false`
+   * garante isso, senão metade das vezes a bomba cairia longe de onde a
+   * mira mandou. Um "avião" cosmético cruza o céu na mesma direção,
+   * puramente visual (nunca colide com nada — ver `atualizarAviao`).
+   */
+  function chamarAtaqueAereo(w, arma) {
+    const boca = Worm.bocaDaArma(w, 0.4);
+    const alcance = arma.alcanceMax ?? 60;
+    const n = arma.bombas ?? 4;
+    const passo = arma.espalhamentoBombas ?? 3;
+    const margem = (passo * (n - 1)) / 2 + 1;
+
+    // Igual à mira de um hitscan de longo alcance, mas grampeada dentro do
+    // mapa com folga para a fileira inteira de bombas: sem isto, mirar perto
+    // da borda jogaria a coluna (e o avião cosmético) para fora do mundo,
+    // enquanto cada bomba, grampeada por si, cairia num lugar bem diferente
+    // de onde o avião parecia estar voando.
+    const bruto = boca.x + Math.cos(w.angulo) * w.direcao * alcance;
+    const alvoX = Math.max(margem, Math.min(terreno.largura - margem, bruto));
+
+    const inicioX = alvoX - (passo * (n - 1)) / 2;
+    const alturaSpawn = terreno.altura - 1;
+
+    for (let i = 0; i < n; i += 1) {
+      estado.projeteis.push(createProjectile({
+        arma: { ...BOMBA_AEREA, raio: arma.raio, dano: arma.dano, impulso: arma.impulso },
+        x: inicioX + passo * i + rng.range(-0.35, 0.35),
+        y: alturaSpawn,
+        vx: 0,
+        vy: -1,
+      }));
+    }
+
+    const sentido = Math.sign(alvoX - boca.x) || w.direcao;
+    estado.aviao = { x: inicioX - sentido * 10, y: alturaSpawn - 1, sentido, tempo: 0, fumaca: 0 };
+    sfx.aviao(panDe(alvoX));
+  }
+
+  /**
    * A ovelha reaproveita direto as funções de movimento da minhoca: pula com
    * o mesmo impulso, anda com o mesmo degrau, cai com o mesmo dano. Não
    * precisa de física própria — só de um corpo com a forma certa e de um
@@ -821,6 +886,7 @@ export function createMatch({
 
     atualizarProjeteis(dt);
     atualizarCriaturas(dt);
+    atualizarAviao(dt);
     particles.update(dt);
 
     for (let i = estado.tracos.length - 1; i >= 0; i -= 1) {
@@ -988,6 +1054,38 @@ export function createMatch({
   }
 
   /**
+   * O "avião" do ataque aéreo: puramente cosmético — nunca colide com nada
+   * e não bloqueia o turno (quem faz isso são as bombas, em `estado.projeteis`,
+   * como qualquer outro projétil). Cruza a tela reto e some sozinho depois
+   * de `DURACAO_AVIAO`, deixando um rastro de fumaça leve pelo caminho.
+   */
+  function atualizarAviao(dt) {
+    const a = estado.aviao;
+    if (!a) return;
+
+    a.tempo += dt;
+    a.x += a.sentido * VELOCIDADE_AVIAO * dt;
+
+    a.fumaca -= dt;
+    if (a.fumaca <= 0) {
+      a.fumaca = 0.05;
+      particles.spawn({
+        x: a.x - a.sentido * 0.9,
+        y: a.y,
+        vx: rng.range(-0.15, 0.15),
+        vy: rng.range(-0.1, 0.25),
+        life: rng.range(0.5, 1),
+        size: rng.range(0.07, 0.16),
+        color: 'rgba(214, 214, 214, 0.4)',
+        gravity: -0.4,
+        drag: 1.2,
+      });
+    }
+
+    if (a.tempo > DURACAO_AVIAO) estado.aviao = null;
+  }
+
+  /**
    * Grampeia, arredonda a 2 casas (soma e multiplicação em ponto flutuante
    * derivam — 0,5 vira 0,5000000000000001 — e aí nem o clamp exato no piso
    * nem uma comparação futura contra 0,5 batem certo) e, se mudou de
@@ -1029,6 +1127,7 @@ export function createMatch({
 
   function desenhar(ctx) {
     desenharCeu(ctx);
+    desenharAviao(ctx);
     terreno.repintar(2);
     terreno.desenhar(ctx, camera);
     desenharAgua(ctx);
@@ -1051,6 +1150,37 @@ export function createMatch({
 
     for (const p of estado.projeteis) desenharProjetil(ctx, p, camera);
     for (const t of estado.tracos) desenharTraco(ctx, t, camera);
+  }
+
+  /** O avião do ataque aéreo: uma silhueta simples, virada pro lado que voa. */
+  function desenharAviao(ctx) {
+    const a = estado.aviao;
+    if (!a) return;
+    const s = camera.toScreen(a.x, a.y);
+    const e = Math.max(10, camera.scale * 1.1);
+
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.scale(a.sentido, 1);
+
+    ctx.fillStyle = '#454c54';
+    ctx.beginPath();
+    ctx.moveTo(e * 0.95, 0);
+    ctx.lineTo(-e * 0.55, -e * 0.16);
+    ctx.lineTo(-e * 0.95, 0);
+    ctx.lineTo(-e * 0.55, e * 0.16);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-e * 0.05, -e * 0.03);
+    ctx.lineTo(-e * 0.4, -e * 0.55);
+    ctx.lineTo(-e * 0.55, -e * 0.5);
+    ctx.lineTo(-e * 0.15, e * 0.05);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
   }
 
   /** A ovelha: uma minhoca branca e felpuda, sem arma nem barra de vida. */

@@ -105,6 +105,31 @@ test('uma explosão perto de quem está preso na corda solta a corda antes de em
   assert.ok(w.vy < vyLogoApos, 'a queda livre acelera com a gravidade, não é travada pela corda');
 });
 
+test('uma minhoca que se afoga ainda presa na corda solta a corda, não fica órfã', () => {
+  const partida = partidaDeTeste();
+  rodar(partida, 1.5); // sai de PREPARANDO
+
+  const w = partida.estado.ativa;
+  partida.comandos.trocarArma('corda');
+  w.y = partida.terreno.superficieEm(w.x) + 8;
+  w.estado = 'voando';
+  w.vx = 0;
+  w.vy = 0;
+  w.angulo = -Math.PI / 2;
+  partida.comandos.carregar(); // dispara a corda
+
+  assert.ok(partida.estado.corda, 'a corda tinha de prender no chão logo abaixo');
+
+  // Sobe a água bem acima de onde a minhoca está pendurada — a mesma
+  // condição de afogamento que `resolverConsequencias` testa, sem precisar
+  // brigar com `Rope.passo()` reescrevendo x/y a cada quadro.
+  partida.estado.nivelAgua = w.y + 50;
+  partida.update(1 / 120);
+
+  assert.equal(w.vivo, false, 'a minhoca tinha de se afogar');
+  assert.equal(partida.estado.corda, null, 'a corda tinha de soltar, não ficar presa a um corpo morto');
+});
+
 test('a mina explode por proximidade e o turno passa normalmente depois', () => {
   const partida = partidaDeTeste();
   rodar(partida, 1.5);
@@ -135,6 +160,32 @@ test('a mina explode por proximidade e o turno passa normalmente depois', () => 
   rodar(partida, 5);
   assert.ok(partida.turnos.turno > turnoAntes, 'o turno tem de avançar depois da mina resolver');
   assert.equal(partida.estado.projeteis.some((p) => p.arma.id === 'mina'), false);
+});
+
+test('o ataque aéreo solta várias bombas retas, imunes ao vento, e o turno passa depois', () => {
+  const partida = partidaDeTeste();
+  rodar(partida, 1.5);
+
+  const arma = armaPorId('aereo');
+  partida.estado.vento = 9; // vento forte de propósito — a bomba não pode desviar com ele
+  partida.comandos.trocarArma('aereo');
+  partida.comandos.carregar(); // sem força pra carregar: dispara na hora, como um hitscan
+
+  assert.equal(partida.estado.projeteis.length, arma.bombas, 'esperava uma bomba por item de arma.bombas');
+  const xIniciais = partida.estado.projeteis.map((p) => p.x);
+
+  rodar(partida, 0.3); // um pouco de queda livre, tempo de sobra pro vento agir se pudesse
+  for (const p of partida.estado.projeteis) {
+    assert.equal(p.vx, 0, 'a bomba não pode ganhar velocidade horizontal — não sofre vento');
+  }
+  partida.estado.projeteis.forEach((p, i) => {
+    assert.ok(Math.abs(p.x - xIniciais[i]) < 1e-9, 'sem vx, a coluna de queda não pode mudar');
+  });
+
+  const turnoAntes = partida.turnos.turno;
+  rodar(partida, 6); // tempo de sobra pra cair, explodir e o turno passar
+  assert.ok(partida.turnos.turno > turnoAntes, 'o turno tem de avançar depois que as bombas resolvem');
+  assert.equal(partida.estado.projeteis.length, 0);
 });
 
 test('a viga assenta e vira terreno sólido que a partir daí bloqueia normalmente', () => {
