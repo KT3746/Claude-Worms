@@ -162,3 +162,42 @@ test('fillRect é recortado na borda do mapa sem estourar o array', () => {
   assert.doesNotThrow(() => fillRect(mask, 35, 25, 60, 60, TERRA));
   assert.equal(mask.data.length, 40 * 30);
 });
+
+test('a grama é exatamente a casca de até GRAMA_ESPESSURA px abaixo do ar', () => {
+  const mask = mapaComChao(20, 24, 10);
+  regrowGrass(mask, { x0: 0, y0: 0, x1: 19, y1: 23 });
+
+  for (let y = 10; y < 24; y += 1) {
+    const profundidade = y - 10 + 1; // 1 = primeira linha logo abaixo do ar
+    const esperado = profundidade <= GRAMA_ESPESSURA ? GRAMA : TERRA;
+    assert.equal(at(mask, 5, y), esperado, `linha ${y} (${profundidade} px abaixo do ar)`);
+  }
+});
+
+test('sólido colado no topo do mapa vira grama: acima da linha 0 é céu aberto', () => {
+  const mask = createMask(6, 8, AR);
+  for (let y = 0; y < 8; y += 1) for (let x = 0; x < 6; x += 1) setAt(mask, x, y, TERRA);
+  regrowGrass(mask, { x0: 0, y0: 0, x1: 5, y1: 7 });
+
+  assert.equal(at(mask, 2, 0), GRAMA, 'a linha 0 tem céu logo acima');
+  assert.equal(at(mask, 2, GRAMA_ESPESSURA - 1), GRAMA, 'ainda dentro da casca');
+  assert.equal(at(mask, 2, GRAMA_ESPESSURA), TERRA, 'fundo demais para a casca');
+});
+
+test('refazer a grama só de um pedaço dá o mesmo resultado que refazer tudo', () => {
+  // A varredura por coluna precisa olhar acima do retângulo pedido, senão a
+  // faixa de cima da região sairia diferente do resto do mapa.
+  const inteiro = mapaComChao(20, 24, 10);
+  regrowGrass(inteiro, { x0: 0, y0: 0, x1: 19, y1: 23 });
+
+  const pedaco = mapaComChao(20, 24, 10);
+  regrowGrass(pedaco, { x0: 0, y0: 0, x1: 19, y1: 23 });
+  for (let y = 10; y < 24; y += 1) for (let x = 0; x < 20; x += 1) setAt(pedaco, x, y, TERRA);
+  regrowGrass(pedaco, { x0: 4, y0: 12, x1: 9, y1: 23 }); // só um retalho, começando NO MEIO da casca
+
+  for (let y = 12; y < 24; y += 1) {
+    for (let x = 4; x <= 9; x += 1) {
+      assert.equal(at(pedaco, x, y), at(inteiro, x, y), `(${x},${y}) devia bater com o mapa refeito inteiro`);
+    }
+  }
+});

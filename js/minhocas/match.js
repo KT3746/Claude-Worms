@@ -27,8 +27,19 @@ const NOMES = [
 /** Explosão da minhoca que morre — é o que encadeia mortes. */
 const EXPLOSAO_DE_MORTE = { raio: 1.9, dano: 28, impulso: 8 };
 
-/** A água sobe isto por turno depois da morte súbita. */
+/**
+ * Morte súbita: quanto a água sobe no primeiro turno depois dela, e quanto
+ * essa subida cresce a cada turno seguinte.
+ *
+ * Só o valor fixo de 0,22 m não decidia partida nenhuma: num mapa de 45 m
+ * com o relevo lá pelos 20, alagar o terreno levava ~90 turnos DEPOIS da
+ * morte súbita — no teste de 30 partidas de IA contra IA, um terço passava
+ * de 70 turnos sem acabar. Subindo cada vez mais rápido, a maré fecha o
+ * cerco em ~25 turnos: o começo continua manso (dá tempo de reagir e subir
+ * o morro) e o fim é inevitável, que é o ponto da morte súbita.
+ */
 const SUBIDA_AGUA = 0.22;
+const ACELERACAO_AGUA = 0.06;
 
 /**
  * Faixa do zoom ajustável pelo jogador (`comandos.ajustarZoom`). O mapa tem
@@ -48,6 +59,15 @@ const PASSO_ZOOM = 0.1;
  * demais e vira um zumbido; devagar demais e ninguém associa o som ao gesto. */
 const INTERVALO_PASSO = 0.28;
 const INTERVALO_JATO = 0.16;
+
+/**
+ * Pavio inicial de cada turno, em segundos — o mesmo que a granada declara.
+ * Vinha de `ARMAS[1].pavio`, mas `ARMAS[1]` é o MORTEIRO, que não tem pavio
+ * nenhum: todo turno começava com `estado.pavio = undefined`, e o HUD
+ * escrevia "pavio undefineds" enquanto nenhum dos botões 1–5 aparecia
+ * marcado. Ler da arma por id não quebra de novo se a tabela mudar de ordem.
+ */
+const PAVIO_PADRAO = armaPorId('granada').pavio;
 
 /** O "avião" do ataque aéreo é só efeito visual — nunca colide com nada.
  * Cruza a tela nesta velocidade e some sozinho depois deste tempo. */
@@ -164,8 +184,8 @@ export function createMatch({
     // O "avião" cosmético do ataque aéreo enquanto cruza a tela — null fora
     // de um chamado. Ver `chamarAtaqueAereo` e `atualizarAviao`.
     aviao: null,
-    slowmo: 1,
     tempoAgua: 0,
+    subidasDeAgua: 0, // quantas vezes a maré já subiu — ver ACELERACAO_AGUA
     fimDeJogo: false,
     vencedor: null,
   };
@@ -186,7 +206,7 @@ export function createMatch({
         estado.corda = null;
         estado.jetpackCombustivel = COMBUSTIVEL_JETPACK;
         estado.arma = ARMAS[0];
-        estado.pavio = ARMAS[1].pavio;
+        estado.pavio = PAVIO_PADRAO;
         estado.vento = Math.round(rng.range(-9, 9) * 10) / 10;
         estado.ativa = proximaMinhoca();
         estado.panOffsetX = 0; // cada turno começa centrado — nenhum passeio de câmera sobra do turno anterior
@@ -205,7 +225,8 @@ export function createMatch({
         sfx.sirene();
       },
       aoSubirAgua() {
-        estado.nivelAgua += SUBIDA_AGUA;
+        estado.subidasDeAgua += 1;
+        estado.nivelAgua += SUBIDA_AGUA + ACELERACAO_AGUA * (estado.subidasDeAgua - 1);
       },
       aoFim(vencedor) {
         estado.fimDeJogo = true;
@@ -306,10 +327,13 @@ export function createMatch({
 
   // ------------------------------------------------------- explosões
 
+  /** O meio do tronco da minhoca — `w.x/w.y` são os PÉS. Ver `explosao`. */
+  const centroDoCorpo = (w) => ({ x: w.x, y: w.y + Worm.ALTURA * 0.5 });
+
   function detonar(x, y, arma) {
     terreno.explodir(x, y, arma.raio);
 
-    for (const efeito of explosao(todas, x, y, arma)) {
+    for (const efeito of explosao(todas, x, y, arma, centroDoCorpo)) {
       const w = efeito.corpo;
       w.vida -= efeito.dano;
       w.piscar = 0.45;
@@ -667,7 +691,12 @@ export function createMatch({
     const destX = w.x + Math.cos(w.angulo) * w.direcao * alcance;
     const destY = w.y + Math.sin(w.angulo) * alcance;
 
-    if (terreno.solidoEm(destX, destY)) {
+    // A cápsula inteira, não só o pé: `terreno.solidoEm` testa UM ponto, e
+    // com ele bastava o chão do destino estar livre para a minhoca aparecer
+    // com a cabeça (ou um flanco) dentro da pedra — de onde nunca mais saía,
+    // presa em 'voando' sem conseguir se mexer. `Worm.colide` é a mesma
+    // sonda de 5 pontos que o resto do movimento usa.
+    if (Worm.colide(terreno, destX, destY)) {
       anunciar('Sem espaço para aparecer ali.', 1);
       return;
     }
@@ -913,9 +942,6 @@ export function createMatch({
 
     turnos.update(dt, contexto());
     seguirCamera(dt);
-
-    // Câmera lenta no instante em que um tiro decide a partida.
-    estado.slowmo = 1;
     camera.update(dt);
   }
 
@@ -1128,7 +1154,7 @@ export function createMatch({
   function desenhar(ctx) {
     desenharCeu(ctx);
     desenharAviao(ctx);
-    terreno.repintar(2);
+    terreno.repintar(); // dentro do orçamento de pixels do quadro (ver terrain.js)
     terreno.desenhar(ctx, camera);
     desenharAgua(ctx);
 

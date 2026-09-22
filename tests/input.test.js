@@ -135,3 +135,45 @@ test('releaseAll solta tudo — os controles sumindo no meio de um toque', async
   assert.equal(input.isDown('Space'), false);
   assert.equal(input.pointer.down, false);
 });
+
+test('só o botão principal do mouse joga — o direito não mexe a mira', () => {
+  return montar().then(({ canvas, input }) => {
+    const evento = (button) => ({ cancelable: true, cancelado: false, button, clientX: 200, clientY: 150,
+      preventDefault() { this.cancelado = true; } });
+
+    const direito = evento(2);
+    canvas.emitir('mousedown', direito);
+    assert.equal(input.pointer.down, false, 'o botão direito é do navegador, não do jogo');
+    assert.equal(input.pointer.justPressed, false);
+    assert.equal(direito.cancelado, false, 'e nem o evento dele é cancelado');
+
+    const principal = evento(0);
+    canvas.emitir('mousedown', principal);
+    assert.equal(input.pointer.down, true);
+    assert.equal(principal.cancelado, true);
+  });
+});
+
+test('o menu de contexto do canvas é cancelado: segurar para mirar não abre menu', () => {
+  return montar().then(({ canvas }) => {
+    const menu = { cancelado: false, preventDefault() { this.cancelado = true; } };
+    canvas.emitir('contextmenu', menu);
+    assert.equal(menu.cancelado, true);
+  });
+});
+
+test('Enter (pular) é tecla do jogo: o padrão do navegador é cancelado', () => {
+  return montar().then(({ janela, input }) => {
+    const tecla = (code) => ({ code, cancelado: false, target: null,
+      preventDefault() { this.cancelado = true; } });
+
+    const enter = tecla('Enter');
+    janela.emitir('keydown', enter);
+    assert.equal(input.wasPressed('Enter'), true);
+    assert.equal(enter.cancelado, true, 'sem isto, Enter também reativa o botão do DOM em foco');
+
+    const tab = tecla('Tab');
+    janela.emitir('keydown', tab);
+    assert.equal(tab.cancelado, false, 'a navegação por Tab continua sendo do navegador');
+  });
+});

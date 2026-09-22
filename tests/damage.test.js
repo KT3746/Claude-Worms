@@ -90,3 +90,19 @@ test('cair de alto machuca, e mais quanto mais rápido', () => {
 test('o sinal da velocidade não importa para o dano de queda', () => {
   assert.equal(danoDeQueda(-16), danoDeQueda(16));
 });
+
+test('centroDe decide de ONDE se mede a distância (a minhoca guarda os pés)', () => {
+  const corpo = { x: 0, y: 0 };            // "pés" na origem
+  const pelosPes = explosao([corpo], 0, 0, BAZUCA);
+  const peloTronco = explosao([corpo], 0, 0, BAZUCA, (c) => ({ x: c.x, y: c.y + 0.5 }));
+
+  assert.equal(pelosPes[0].distancia, 0, 'sem `centroDe`, mede pela posição crua');
+  assert.ok(Math.abs(peloTronco[0].distancia - 0.5) < 1e-9, 'com `centroDe`, mede pelo ponto dado');
+  assert.ok(peloTronco[0].dano < pelosPes[0].dano, 'mais longe do centro, menos dano');
+});
+
+test('um corpo fora do raio pelo centro dado não entra na lista, mesmo que os pés estejam dentro', () => {
+  const corpo = { x: 0, y: 0 };
+  const efeitos = explosao([corpo], 0, -2.3, BAZUCA, (c) => ({ x: c.x, y: c.y + 0.5 }));
+  assert.equal(efeitos.length, 0, '2,8 m do tronco é mais que o raio de 2,4 m');
+});

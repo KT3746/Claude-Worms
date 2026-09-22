@@ -168,7 +168,7 @@ export function createScreens(root, actions) {
         'Cada turno dura o tempo escolhido. Depois do tiro sobram 3 segundos '
         + 'para correr. O vento entorta a bazuca, mas não a granada. Cair de '
         + 'muito alto machuca, e a água mata na hora. Depois de 10 rodadas a '
-        + 'água começa a subir.'));
+        + 'água começa a subir, cada turno um pouco mais rápido.'));
 
       box.append(el('div', 'actions').also((r) => r.append(button('Voltar', () => screens.menu()))));
     },

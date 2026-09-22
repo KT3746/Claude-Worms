@@ -13,7 +13,6 @@ import { hashSeed, randomSeed } from '../engine/rng.js';
 import { createMatch } from './match.js';
 import { createAiController } from './ai.js';
 import { DT_FISICA } from './ballistics.js';
-import { FASE } from './turn.js';
 import { desenharHud, desenharDica } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
 import { createTouchControls } from './ui/controls.js';
@@ -265,6 +264,11 @@ pauseButton.addEventListener('click', () => {
  * Segurar M (ou o botão do mapa, no toque) afasta a câmera até caber o mapa
  * inteiro na tela — só pra olhar, sem mirar nem andar.
  *
+ * Vale em QUALQUER fase, como o zoom e o passeio de câmera: é visão, não
+ * jogada. Antes só funcionava em JOGANDO, então justamente nos 3 segundos de
+ * recuo (quando o tiro já saiu e olhar o estrago é o que se quer fazer) e
+ * com o projétil no ar, segurar M não fazia nada.
+ *
  * Precisa vencer `seguirCamera()` (em match.js), que todo quadro volta a
  * mirar a câmera na minhoca ativa. Por isso usa `camera.snap()` — direto,
  * sem suavização — depois que `partida.update()` já rodou: qualquer
@@ -274,7 +278,7 @@ pauseButton.addEventListener('click', () => {
  */
 function aplicarVisaoDoMapa() {
   const partida = estado.partida;
-  if (!partida || partida.fase !== FASE.JOGANDO) return;
+  if (!partida) return;
   if (!input.isDown('KeyM')) return;
 
   const { largura, altura } = partida.terreno;

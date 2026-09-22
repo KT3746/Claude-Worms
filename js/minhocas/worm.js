@@ -45,7 +45,6 @@ export function createWorm({ nome, equipe, x, y }) {
     tempoNoAr: 0,
     quedaMaxima: 0,
     restoDoPasso: 0,       // sobra de movimento menor que um pixel         // maior velocidade de queda desde que saiu do chão
-    afogando: false,
     piscar: 0,
     quadrosResvalandoSemMover: 0, // ver comentário em `atualizar()`
     travada: false,               // idem — presa numa fresta, sem contar como "voando" pro turno

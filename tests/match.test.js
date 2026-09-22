@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { createMatch } from '../js/minhocas/match.js';
 import { armaPorId } from '../js/minhocas/weapons.js';
+import * as Worm from '../js/minhocas/worm.js';
 import { FASE } from '../js/minhocas/turn.js';
 
 /**
@@ -452,4 +453,103 @@ test('um projétil em voo ignora o pan e a câmera volta a seguir a ação', () 
     Math.abs(camera.ultimaCentro.x - (w.x + 5)) < 0.01,
     'a câmera segue o projétil de verdade, não a minhoca deslocada pelo pan',
   );
+});
+
+test('todo turno começa com um pavio de verdade, não com undefined', () => {
+  const partida = partidaDeTeste();
+  const esperado = armaPorId('granada').pavio;
+
+  for (let turno = 0; turno < 3; turno += 1) {
+    rodar(partida, 1.5);
+    assert.equal(typeof partida.estado.pavio, 'number', 'o HUD escreve este número direto');
+    assert.equal(partida.estado.pavio, esperado);
+    partida.turnos.forcarFimDeTurno();
+    rodar(partida, 3);
+  }
+});
+
+test('o teleporte recusa um destino onde só o pé cabe — a minhoca é uma cápsula', () => {
+  const partida = partidaDeTeste();
+  rodar(partida, 1.5);
+  const { terreno } = partida;
+
+  // Um ponto com o pé no ar e o corpo dentro da pedra. Se o mapa desta
+  // semente não tiver nenhum, não há o que testar aqui.
+  let alvo = null;
+  for (let x = 2; x < terreno.largura - 2 && !alvo; x += 0.2) {
+    for (let y = 1; y < terreno.altura - 1; y += 0.2) {
+      if (!terreno.solidoEm(x, y) && Worm.colide(terreno, x, y)) { alvo = { x, y }; break; }
+    }
+  }
+  assert.ok(alvo, 'o mapa de teste precisa ter ao menos um vão estreito');
+
+  const w = partida.estado.ativa;
+  partida.comandos.trocarArma('teleporte');
+  const alcance = partida.estado.arma.alcanceMax;
+  // Põe a minhoca exatamente a um alcance do alvo, mirando nele.
+  const angulo = Math.PI / 6;
+  w.direcao = 1;
+  w.angulo = angulo;
+  w.x = alvo.x - Math.cos(angulo) * alcance;
+  w.y = alvo.y - Math.sin(angulo) * alcance;
+
+  const antes = { x: w.x, y: w.y };
+  partida.comandos.carregar();
+
+  assert.equal(w.x, antes.x, 'não pode sair do lugar');
+  assert.equal(w.y, antes.y);
+  assert.match(partida.estado.mensagem, /espaço/i, 'e precisa avisar por quê');
+});
+
+test('explosão em cima do tronco dá dano cheio; a mesma explosão longe dele, não', () => {
+  const partida = partidaDeTeste();
+  rodar(partida, 1.5);
+
+  const arma = armaPorId('bazuca');
+  const alvo = partida.estado.todas.find((v) => v.vivo && v !== partida.estado.ativa);
+  alvo.estado = 'parada';
+  alvo.vx = 0;
+  alvo.vy = 0;
+
+  const projetilEm = (x, y) => ({
+    arma, x, y, vx: 0, vy: 0, dono: null, pavio: 0,
+    vivo: true, fumaca: 1, giro: 0, apoiado: false, tempoVivo: 0,
+  });
+
+  // Bem no meio do corpo: dano máximo da arma, sem desconto nenhum.
+  const vidaAntes = alvo.vida;
+  partida.estado.projeteis.push(projetilEm(alvo.x, alvo.y + Worm.ALTURA * 0.5));
+  partida.update(1 / 120);
+  const danoDireto = vidaAntes - alvo.vida;
+  assert.ok(Math.abs(danoDireto - arma.dano) < 0.5, `acerto direto devia doer ${arma.dano}, doeu ${danoDireto.toFixed(1)}`);
+
+  // Um palmo ao lado do tronco (ainda encostando, senão o projétil não
+  // explodiria ali): a curva continua caindo com a distância ao centro.
+  alvo.vida = 100;
+  const desvio = Worm.LARGURA * 0.55;
+  partida.estado.projeteis.push(projetilEm(alvo.x + desvio, alvo.y + Worm.ALTURA * 0.5));
+  partida.update(1 / 120);
+  const danoDeRaspao = 100 - alvo.vida;
+  assert.ok(danoDeRaspao > 0, 'de raspão ainda tem de doer');
+  assert.ok(danoDeRaspao < danoDireto, 'mas menos que no meio do tronco');
+});
+
+test('a maré da morte súbita sobe cada vez mais rápido, até fechar o cerco', () => {
+  const partida = partidaDeTeste({ tempoTurno: 30 });
+  const subir = () => partida.turnos.update(0, { tudoParado: true, projeteisAtivos: 0, equipesVivas: 2 });
+
+  // Liga a morte súbita direto na máquina de turnos e mede cada subida.
+  partida.turnos.morteSubita = true;
+  const niveis = [partida.estado.nivelAgua];
+  for (let i = 0; i < 6; i += 1) {
+    partida.turnos.forcarFimDeTurno();
+    rodar(partida, 4); // deixa assentar, resolver e virar o turno
+    niveis.push(partida.estado.nivelAgua);
+  }
+
+  const passos = niveis.slice(1).map((n, i) => n - niveis[i]).filter((d) => d > 0);
+  assert.ok(passos.length >= 3, 'esperava várias subidas de água');
+  for (let i = 1; i < passos.length; i += 1) {
+    assert.ok(passos[i] > passos[i - 1], `a subida ${i} (${passos[i].toFixed(3)} m) tinha de ser maior que a anterior (${passos[i - 1].toFixed(3)} m)`);
+  }
 });

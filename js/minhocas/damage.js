@@ -49,16 +49,25 @@ export function impulsoEm(arma, dx, dy, distancia) {
  * Não modifica nada: devolve o que aconteceria, para quem chamou aplicar na
  * ordem que quiser (e para o teste conferir sem montar um mundo inteiro).
  *
+ * `centroDe` diz ONDE fica o corpo para efeito de distância. O padrão é a
+ * própria posição, mas a minhoca guarda a posição dos PÉS: medir por ali
+ * dava dano cheio a um tiro no chão e cortava ~20% de um acerto direto no
+ * tronco, justo o tiro mais difícil — e desalinhava do resto do jogo, que
+ * já resolve hitscan e colisão de projétil pelo meio do corpo (e é onde a
+ * própria IA mira). Ver a chamada em `detonar`, em match.js.
+ *
  * @param {Array<{x:number, y:number, vivo?:boolean}>} corpos
+ * @param {(corpo:object) => {x:number, y:number}} [centroDe]
  * @returns {Array<{corpo:object, dano:number, impulso:{x:number,y:number}, distancia:number}>}
  */
-export function explosao(corpos, x, y, arma) {
+export function explosao(corpos, x, y, arma, centroDe = (corpo) => corpo) {
   const efeitos = [];
 
   for (const corpo of corpos) {
     if (corpo.vivo === false) continue;
-    const dx = corpo.x - x;
-    const dy = corpo.y - y;
+    const centro = centroDe(corpo);
+    const dx = centro.x - x;
+    const dy = centro.y - y;
     const distancia = Math.hypot(dx, dy);
     if (distancia >= arma.raio) continue;
 

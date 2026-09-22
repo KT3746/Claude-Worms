@@ -15,6 +15,15 @@ import {
 
 const TAMANHO_BLOCO = 512;
 
+/**
+ * Pixels de terreno repintados por quadro, no máximo. Medido no Chromium:
+ * a pintura custa ~25 mil pixels por milissegundo, então isto é ~2,5 ms do
+ * quadro de 16,7 ms. Uma cratera comum (raio de 3 m = 128 px de lado, ~17
+ * mil pixels) continua saindo inteira num quadro só; só as regiões grandes
+ * — várias explosões espalhadas pelo mesmo bloco — são divididas.
+ */
+const ORCAMENTO_REPINTURA = 60000;
+
 /** Ruído estável por pixel: repintar o mesmo bloco dá sempre o mesmo grão. */
 function grao(x, y) {
   let h = Math.imul(x, 374761393) + Math.imul(y, 668265263);
@@ -186,12 +195,13 @@ export function createTerrain({ mask, alturas, nivelAgua, nascimentos, ppm }) {
     },
 
     /**
-     * Repinta blocos sujos, no máximo `max` por quadro. A máscara já está
-     * correta para a física antes disso — o limite só espalha o custo do
-     * desenho, nunca atrasa a colisão.
+     * Repinta o que estiver sujo dentro do orçamento de pixels do quadro
+     * (ver `repaint` em chunks.js). A máscara já está correta para a física
+     * antes disso — o orçamento só espalha o custo do desenho, nunca atrasa
+     * a colisão.
      */
-    repintar(max = 2) {
-      return blocos.repaint(max);
+    repintar(orcamento = ORCAMENTO_REPINTURA) {
+      return blocos.repaint(orcamento);
     },
 
     /**

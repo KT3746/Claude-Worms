@@ -56,7 +56,8 @@ você deixou nesta. Ainda afastado demais? Shift + ← → (ou arrastar com dois
 dedos no toque) desloca a câmera de lado sem mover a minhoca nem gastar o
 turno — solta no próximo turno, pra sempre começar centrado. Segurando M
 (ou o botão do mapa) a câmera afasta até caber o mapa inteiro, pra decidir
-com calma antes de mirar; soltar volta suave pro zoom de sempre. Nenhum dos
+com calma antes de mirar — em qualquer fase, inclusive com o tiro no ar e
+nos 3 segundos de recuo; soltar volta suave pro zoom de sempre. Nenhum dos
 três mira, atira nem anda: é só visão.
 
 No zoom mais afastado o corpo da minhoca vira poucos pixels — nome e vida
@@ -102,8 +103,9 @@ sozinha.
 - Cair de muito alto machuca. A **água mata na hora**.
 - Uma minhoca que chega a zero **explode**, e a explosão dela pode derrubar
   as vizinhas. Mortes em cadeia são parte do jogo.
-- Depois de **10 rodadas** entra a morte súbita: a água começa a subir a cada
-  turno.
+- Depois de **10 rodadas** entra a morte súbita: a água sobe a cada turno, e
+  **cada vez mais rápido** — no começo dá para subir o morro, mas ninguém
+  escapa da maré por muito tempo.
 
 ### Semente do mapa
 
@@ -120,8 +122,12 @@ Túnel, arco e ilha saem de graça.
 
 O desenho é feito em **blocos de 512 × 512**, e cada bloco guarda o retângulo
 que precisa ser refeito: uma explosão suja ~130 × 130 px, não o bloco inteiro.
-Medido no Chromium, o pior quadro com explosão fica em **6,7 ms** dos 16,7
-disponíveis.
+A repintura tem **orçamento por quadro contado em pixels** (~60 mil, uns 2,5
+ms): uma cratera comum sai inteira de uma vez, e só as regiões grandes — duas
+explosões em cantos opostos do mesmo bloco, cuja região suja é o retângulo que
+envolve as duas — são divididas em faixas ao longo de alguns quadros. A
+máscara já está correta para a física antes da primeira faixa; o que espera é
+só o desenho.
 
 **A minhoca não é um corpo físico honesto.** Andar é dar passos de um pixel
 tentando subir ou descer um degrau de até 32 cm; só o voo é integração de

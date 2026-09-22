@@ -120,20 +120,50 @@ export function createChunks({ width, height, size = 512, paint }) {
     },
 
     /**
-     * Repinta até `max` blocos sujos e devolve quantos foram repintados.
-     * O limite espalha o custo de uma explosão grande por alguns quadros —
-     * a máscara já está correta para a física antes do primeiro repaint.
+     * Repinta região suja até gastar `orcamento` PIXELS, e devolve quantos
+     * blocos encostou. O orçamento é por área, não por bloco, porque a
+     * região suja de um bloco é o retângulo que ENVOLVE tudo que sujou
+     * nele: duas crateras em cantos opostos do mesmo bloco viram um
+     * retângulo de 512 × 512 (~10 ms de repintura), e um limite contado em
+     * blocos deixava dois desses caírem no mesmo quadro — o engasgo visível
+     * depois de uma explosão grande.
+     *
+     * O que não couber no orçamento continua sujo e é repintado nos quadros
+     * seguintes, em faixas horizontais: `putImageData` escreve na altura que
+     * receber, então uma faixa por vez compõe a imagem final sem emenda. A
+     * máscara já está correta para a física antes da primeira faixa — o
+     * atraso é só de desenho, nunca de colisão.
      */
-    repaint(max = Infinity) {
-      let done = 0;
+    repaint(orcamento = Infinity) {
+      let gasto = 0;
+      let blocos = 0;
+
       for (const bloco of list) {
         if (!bloco.sujo) continue;
-        if (done >= max) break;
-        paint(bloco.ctx, bloco, bloco.sujo);
-        bloco.sujo = null;
-        done += 1;
+        if (gasto >= orcamento) break;
+
+        const s = bloco.sujo;
+        const largura = s.x1 - s.x0 + 1;
+        const alturaSuja = s.y1 - s.y0 + 1;
+        if (largura <= 0 || alturaSuja <= 0) {
+          bloco.sujo = null;
+          continue;
+        }
+
+        // Ao menos uma linha por bloco, sempre: um orçamento apertado pode
+        // atrasar a repintura, nunca parar de progredir.
+        const cabem = Math.max(1, Math.floor((orcamento - gasto) / largura));
+        const linhas = Math.min(alturaSuja, cabem);
+
+        paint(bloco.ctx, bloco, { x0: s.x0, y0: s.y0, x1: s.x1, y1: s.y0 + linhas - 1 });
+        gasto += largura * linhas;
+        blocos += 1;
+
+        if (linhas >= alturaSuja) bloco.sujo = null;
+        else s.y0 += linhas; // o resto fica para o próximo quadro
       }
-      return done;
+
+      return blocos;
     },
 
     get dirtyCount() {

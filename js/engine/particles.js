@@ -47,26 +47,6 @@ export function createParticles() {
   }
 
   return {
-    /** Explosão radial de partículas em torno de um ponto. */
-    burst(x, y, count, options = {}) {
-      for (let i = 0; i < count; i += 1) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = (options.speed ?? 3) * (0.35 + Math.random() * 0.65);
-        spawn({
-          ...options,
-          x,
-          y,
-          vx: Math.cos(angle) * speed + (options.vx ?? 0),
-          vy: Math.sin(angle) * speed + (options.vy ?? 0),
-          life: (options.life ?? 0.6) * (0.6 + Math.random() * 0.8),
-          size: (options.size ?? 0.05) * (0.6 + Math.random() * 0.8),
-          color: Array.isArray(options.color)
-            ? options.color[(Math.random() * options.color.length) | 0]
-            : options.color,
-        });
-      }
-    },
-
     spawn,
 
     update(dt) {

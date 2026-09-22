@@ -140,20 +140,31 @@ export function regrowGrass(mask, rect) {
   const y0 = Math.max(0, rect.y0);
   const y1 = Math.min(mask.height - 1, rect.y1);
 
+  // Uma varredura por coluna, de cima para baixo, contando há quantas linhas
+  // não se vê ar. É a mesma pergunta de antes ("tem ar até 4 px acima?"),
+  // respondida com uma leitura por pixel em vez de quatro — e a repintura de
+  // uma cratera grande é justamente onde o quadro engasgava.
+  //
+  // A varredura começa `GRAMA_ESPESSURA` linhas ACIMA do retângulo (sem
+  // escrever nelas) só para o contador chegar em `y0` já sabendo o que havia
+  // em cima, exatamente como o laço de trás pra frente enxergava.
   for (let x = x0; x <= x1; x += 1) {
-    for (let y = y0; y <= y1; y += 1) {
+    const inicio = Math.max(0, y0 - GRAMA_ESPESSURA);
+    // Acima do topo do mapa é céu aberto (ver `at`): quem começa na linha 0
+    // tem ar a exatamente uma linha de distância, não rocha. Começar em 0
+    // aqui (em vez de 1) desloca a conta em um e faz a grama descer um pixel
+    // a mais do que deveria — foi o que a prova de equivalência pegou.
+    let desdeOAr = inicio === 0 ? 1 : GRAMA_ESPESSURA + 1;
+
+    for (let y = inicio; y <= y1; y += 1) {
       const i = y * mask.width + x;
       const m = mask.data[i];
-      if (m === AR || m === ROCHA) continue;
 
-      let casca = false;
-      for (let k = 1; k <= GRAMA_ESPESSURA; k += 1) {
-        if (at(mask, x, y - k) === AR) {
-          casca = true;
-          break;
-        }
+      if (y >= y0 && m !== AR && m !== ROCHA) {
+        mask.data[i] = desdeOAr <= GRAMA_ESPESSURA ? GRAMA : TERRA;
       }
-      mask.data[i] = casca ? GRAMA : TERRA;
+
+      desdeOAr = m === AR ? 1 : desdeOAr + 1;
     }
   }
 }

@@ -56,6 +56,10 @@ export function createInput(canvas) {
   }
 
   function onDown(event) {
+    // Só o botão principal joga: com o direito (ou o do meio) o navegador
+    // abre o menu de contexto, e a mira ainda pulava para lá no caminho.
+    // `event.button` só existe no mouse — no toque é `undefined`, e aí passa.
+    if (event.button !== undefined && event.button !== 0) return;
     if (event.touches?.length >= 2) {
       atualizarPinca(event);
       if (event.cancelable) event.preventDefault();
@@ -91,6 +95,7 @@ export function createInput(canvas) {
     if (doJogo && event.cancelable) event.preventDefault();
   }
 
+  canvas.addEventListener('contextmenu', (event) => event.preventDefault());
   canvas.addEventListener('mousedown', onDown);
   window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup', onUp);
@@ -175,6 +180,7 @@ export function createInput(canvas) {
 
 const HANDLED_KEYS = new Set([
   'Space',
+  'Enter',
   'ArrowUp',
   'ArrowDown',
   'ArrowLeft',
