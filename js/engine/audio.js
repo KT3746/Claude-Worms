@@ -239,6 +239,13 @@ export const sfx = {
     tone({ freq, duration: 0.06, volume: 0.11, type: 'square', pan });
   },
 
+  /** Pegou uma caixa de vida — um arpejo curto e alegre subindo. */
+  caixa(pan = null) {
+    [660, 880, 1175].forEach((freq, i) => {
+      setTimeout(() => tone({ freq, duration: 0.12, volume: 0.12, type: 'triangle', pan }), i * 70);
+    });
+  },
+
   /** Clique de interface. */
   click() {
     tone({ freq: 520, duration: 0.06, volume: 0.12, type: 'square' });

@@ -18,6 +18,7 @@ import { explosao } from './damage.js';
 import { GRAVIDADE, ARRASTO, interseccaoSegmentoCirculo } from './ballistics.js';
 import * as Worm from './worm.js';
 import * as Rope from './rope.js';
+import * as Caixa from './crate.js';
 
 const NOMES = [
   'Tico', 'Bala', 'Rabo', 'Zé', 'Pipa', 'Nino', 'Vovô', 'Chico',
@@ -69,6 +70,14 @@ const INTERVALO_JATO = 0.16;
  */
 const PAVIO_PADRAO = armaPorId('granada').pavio;
 
+/**
+ * Caixas de vida de paraquedas: chance de cair uma no começo de cada turno
+ * (a partir do segundo — o primeiro é só de posicionar a mira) e quantas
+ * podem estar no mapa ao mesmo tempo, para o céu não virar uma chuva delas.
+ */
+const CHANCE_CAIXA = 0.35;
+const MAX_CAIXAS = 3;
+
 /** O "avião" do ataque aéreo é só efeito visual — nunca colide com nada.
  * Cruza a tela nesta velocidade e some sozinho depois deste tempo. */
 const VELOCIDADE_AVIAO = 30; // m/s
@@ -93,8 +102,13 @@ export function createMatch({
   motionEnabled = true,
   tempoTurno = 45,
   zoom = 1,
+  caixas = true,
 } = {}) {
   const rng = createRng(semente);
+  // Sorteio das caixas num gerador à parte, derivado da mesma semente: a
+  // partida continua reprodutível, e ligar/desligar as caixas não muda o
+  // vento, os nomes nem as jogadas da IA de uma semente conhecida.
+  const rngCaixas = createRng(`${semente}:caixas`);
   const dados = gerarTerreno({ rng });
   const terreno = createTerrain(dados);
   terreno.repintarTudo(); // ainda na tela de carregamento: nenhum quadro de jogo paga por isto
@@ -154,6 +168,8 @@ export function createMatch({
     todas,
     projeteis: [],
     criaturas: [],  // corpos dirigíveis que andam sozinhos (a ovelha)
+    caixas: [],     // caixas de vida de paraquedas — ver crate.js
+    turnosJogados: 0,
     tracos: [],     // traços visuais de tiros instantâneos (escopeta, sniper)
     vento: 0,
     nivelAgua: terreno.nivelAgua,
@@ -215,6 +231,8 @@ export function createMatch({
           camera.lookAt(estado.ativa.x, estado.ativa.y + 1, 26 * estado.zoom);
           sfx.vez();
         }
+        estado.turnosJogados += 1;
+        talvezSoltarCaixa();
       },
       aoDisparar() {
         estado.carregando = false;
@@ -250,6 +268,47 @@ export function createMatch({
       }
     }
     return null;
+  }
+
+  function talvezSoltarCaixa() {
+    if (!caixas || estado.turnosJogados < 2 || estado.caixas.length >= MAX_CAIXAS) return;
+    if (rngCaixas.next() >= CHANCE_CAIXA) return;
+    const pouso = Caixa.sortearPouso(terreno, estado.nivelAgua, rngCaixas);
+    if (!pouso) return;
+    estado.caixas.push(Caixa.createCrate(pouso));
+    anunciar('Caixa de vida caindo!', 1.8);
+  }
+
+  /** Toda minhoca viva que encosta numa caixa a pega — não só a da vez. */
+  function atualizarCaixas(dt) {
+    const env = { gravidade: GRAVIDADE, vento: estado.vento, largura: terreno.largura };
+    for (let i = estado.caixas.length - 1; i >= 0; i -= 1) {
+      const c = estado.caixas[i];
+      Caixa.atualizarCaixa(c, terreno, dt, env);
+
+      if (c.y < estado.nivelAgua) {
+        respingar(c.x, estado.nivelAgua);
+        sfx.respingo(panDe(c.x));
+        estado.caixas.splice(i, 1);
+        continue;
+      }
+
+      const quem = todas.find((w) => w.vivo && Caixa.tocaCaixa(c, w, Worm.LARGURA, Worm.ALTURA));
+      if (quem) {
+        quem.vida += c.valor;
+        anunciar(`${quem.nome} pegou +${c.valor} de vida.`, 1.8);
+        sfx.caixa(panDe(c.x));
+        for (let k = 0; k < 14; k += 1) {
+          particles.spawn({
+            x: c.x, y: c.y + Caixa.LADO / 2,
+            vx: rngCaixas.range(-1.5, 1.5), vy: rngCaixas.range(1, 3.5),
+            life: rngCaixas.range(0.5, 1), size: rngCaixas.range(0.06, 0.13),
+            color: k % 2 ? '#ff6b5e' : '#ffffff', gravity: 3, drag: 1,
+          });
+        }
+        estado.caixas.splice(i, 1);
+      }
+    }
   }
 
   function anunciar(texto, segundos = 2.6) {
@@ -332,6 +391,21 @@ export function createMatch({
 
   function detonar(x, y, arma) {
     terreno.explodir(x, y, arma.raio);
+
+    // Caixa pega pela explosão se desmancha em lascas — a vida se perde.
+    for (let i = estado.caixas.length - 1; i >= 0; i -= 1) {
+      const c = estado.caixas[i];
+      if (!Caixa.explosaoPega(c, x, y, arma.raio)) continue;
+      for (let k = 0; k < 10; k += 1) {
+        particles.spawn({
+          x: c.x, y: c.y + Caixa.LADO / 2,
+          vx: rngCaixas.range(-4, 4), vy: rngCaixas.range(1, 6),
+          life: rngCaixas.range(0.5, 1.1), size: rngCaixas.range(0.06, 0.14),
+          color: k % 3 ? '#b07a45' : '#e8e2d4', gravity: 11, drag: 0.5,
+        });
+      }
+      estado.caixas.splice(i, 1);
+    }
 
     for (const efeito of explosao(todas, x, y, arma, centroDoCorpo)) {
       const w = efeito.corpo;
@@ -915,6 +989,7 @@ export function createMatch({
 
     atualizarProjeteis(dt);
     atualizarCriaturas(dt);
+    atualizarCaixas(dt);
     atualizarAviao(dt);
     particles.update(dt);
 
@@ -1168,6 +1243,7 @@ export function createMatch({
     }
 
     for (const c of estado.criaturas) desenharOvelha(ctx, c, camera);
+    for (const c of estado.caixas) desenharCaixa(ctx, c);
 
     if (estado.corda) desenharCorda(ctx);
     else if (podeAgir() && estado.ativa) desenharMira(ctx);
@@ -1206,6 +1282,54 @@ export function createMatch({
     ctx.closePath();
     ctx.fill();
 
+    ctx.restore();
+  }
+
+  /** Caixa branca com cruz vermelha; com o paraquedas, uma cúpula listrada em cima. */
+  function desenharCaixa(ctx, c) {
+    const e = camera.scale;
+    const l = Caixa.LADO * e;
+    const base = camera.toScreen(c.x, c.y);
+    const x = base.x - l / 2;
+    const y = base.y - l;
+
+    ctx.save();
+    if (c.paraquedas) {
+      const balanco = Math.sin(c.tempo * 2.2) * 0.12;
+      const topo = camera.toScreen(c.x, c.y + Caixa.LADO + 1.1);
+      const r = l * 1.25;
+      ctx.translate(base.x, y);
+      ctx.rotate(balanco);
+      ctx.translate(-base.x, -y);
+      ctx.strokeStyle = 'rgba(240, 240, 240, 0.8)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(base.x - r, topo.y);
+      ctx.moveTo(x + l, y);
+      ctx.lineTo(base.x + r, topo.y);
+      ctx.moveTo(base.x, y);
+      ctx.lineTo(base.x, topo.y);
+      ctx.stroke();
+      for (let k = 0; k < 4; k += 1) {
+        ctx.fillStyle = k % 2 ? '#f4f1e8' : '#e2453c';
+        ctx.beginPath();
+        ctx.moveTo(base.x, topo.y);
+        ctx.arc(base.x, topo.y, r, Math.PI + (k * Math.PI) / 4, Math.PI + ((k + 1) * Math.PI) / 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    ctx.fillStyle = '#f4f1e8';
+    ctx.strokeStyle = '#8a8272';
+    ctx.lineWidth = Math.max(1, e * 0.04);
+    ctx.fillRect(x, y, l, l);
+    ctx.strokeRect(x, y, l, l);
+    ctx.fillStyle = '#e2453c';
+    const b = l * 0.22;
+    ctx.fillRect(base.x - b / 2, y + l * 0.15, b, l * 0.7);
+    ctx.fillRect(x + l * 0.15, y + l / 2 - b / 2, l * 0.7, b);
     ctx.restore();
   }
 

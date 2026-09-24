@@ -106,6 +106,10 @@ sozinha.
 - Depois de **10 rodadas** entra a morte súbita: a água sobe a cada turno, e
   **cada vez mais rápido** — no começo dá para subir o morro, mas ninguém
   escapa da maré por muito tempo.
+- A partir do segundo turno, às vezes uma **caixa de vida** cai de
+  paraquedas (derivando com o vento). Qualquer minhoca que encostar nela
+  ganha **+25 de vida**, mesmo fora da vez. Uma explosão perto destrói a
+  caixa, e a que cai na água se perde. No máximo 3 no mapa ao mesmo tempo.
 
 ### Semente do mapa
 
@@ -162,6 +166,7 @@ js/minhocas/rope.js          corda ninja: pivôs empilhados (puro, testado)
 js/minhocas/turn.js          máquina de turnos           (puro, testado)
 js/minhocas/weapons.js       a tabela de armas           (dados, testado)
 js/minhocas/projectile.js    execução dos tipos de arma
+js/minhocas/crate.js         caixas de vida de paraquedas (puro, testado)
 js/minhocas/match.js         junta tudo: mundo, equipes, regras
 js/minhocas/ai.js            adversário de IA: mira, decide, joga sozinho (testado)
 js/minhocas/ui/hud.js        HUD no canvas
@@ -204,10 +209,3 @@ guiado, minas, dinamite, viga e ataque aéreo — só o arsenal com trajetória
 calculável. Não pula, não recua depois de atirar, não protege uma minhoca
 machucada, e pode andar para dentro de um buraco ou da água no caminho até
 o alvo.
-
-## O que ainda não existe
-
-Faltam as caixas de paraquedas. O desenho está em
-[`docs/PLANO-TRINCHEIRA.md`](docs/PLANO-TRINCHEIRA.md) (documento antigo,
-de antes do jogo se chamar Minhocas — o resto do plano ali não bate mais
-com o código, mas essa peça continua de fora).
