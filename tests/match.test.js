@@ -553,3 +553,27 @@ test('a maré da morte súbita sobe cada vez mais rápido, até fechar o cerco',
     assert.ok(passos[i] > passos[i - 1], `a subida ${i} (${passos[i].toFixed(3)} m) tinha de ser maior que a anterior (${passos[i - 1].toFixed(3)} m)`);
   }
 });
+
+test('dano vira número vermelho flutuando; acertos no mesmo instante somam num só', () => {
+  const partida = partidaDeTeste();
+  rodar(partida, 1.5);
+
+  const arma = armaPorId('bazuca');
+  const alvo = partida.estado.todas.find((v) => v.vivo && v !== partida.estado.ativa);
+  const projetilEm = (x, y) => ({
+    arma, x, y, vx: 0, vy: 0, dono: null, pavio: 0,
+    vivo: true, fumaca: 1, giro: 0, apoiado: false, tempoVivo: 0,
+  });
+
+  const vidaAntes = alvo.vida;
+  partida.estado.projeteis.push(projetilEm(alvo.x, alvo.y + Worm.ALTURA * 0.5));
+  partida.estado.projeteis.push(projetilEm(alvo.x, alvo.y + Worm.ALTURA * 0.5));
+  partida.update(1 / 120);
+
+  const dele = partida.estado.numeros.filter((n) => n.corpo === alvo && n.valor < 0);
+  assert.equal(dele.length, 1, 'duas explosões no mesmo quadro devem virar um número só');
+  assert.ok(Math.abs(-dele[0].valor - (vidaAntes - alvo.vida)) <= 1, 'o número mostra o dano de verdade');
+
+  rodar(partida, 2);
+  assert.ok(!partida.estado.numeros.includes(dele[0]), 'o número some sozinho');
+});

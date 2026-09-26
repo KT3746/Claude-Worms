@@ -78,6 +78,9 @@ const PAVIO_PADRAO = armaPorId('granada').pavio;
 const CHANCE_CAIXA = 0.35;
 const MAX_CAIXAS = 3;
 
+/** Quanto tempo o número de dano/cura fica flutuando, em segundos. */
+const DURACAO_NUMERO = 1.6;
+
 /** O "avião" do ataque aéreo é só efeito visual — nunca colide com nada.
  * Cruza a tela nesta velocidade e some sozinho depois deste tempo. */
 const VELOCIDADE_AVIAO = 30; // m/s
@@ -171,6 +174,7 @@ export function createMatch({
     caixas: [],     // caixas de vida de paraquedas — ver crate.js
     turnosJogados: 0,
     tracos: [],     // traços visuais de tiros instantâneos (escopeta, sniper)
+    numeros: [],    // dano/cura flutuando sobre a minhoca — ver `mostrarNumero`
     vento: 0,
     nivelAgua: terreno.nivelAgua,
     ativa: null,
@@ -296,6 +300,7 @@ export function createMatch({
       const quem = todas.find((w) => w.vivo && Caixa.tocaCaixa(c, w, Worm.LARGURA, Worm.ALTURA));
       if (quem) {
         quem.vida += c.valor;
+        mostrarNumero(quem, c.valor);
         anunciar(`${quem.nome} pegou +${c.valor} de vida.`, 1.8);
         sfx.caixa(panDe(c.x));
         for (let k = 0; k < 14; k += 1) {
@@ -309,6 +314,22 @@ export function createMatch({
         estado.caixas.splice(i, 1);
       }
     }
+  }
+
+  /**
+   * Número flutuante sobre a minhoca: vermelho para dano, verde para cura.
+   * Vários acertos no mesmo instante (os chumbos da escopeta, explosão em
+   * cadeia) somam num número só, em vez de empilhar vários ilegíveis.
+   */
+  function mostrarNumero(w, valor) {
+    const v = Math.round(valor);
+    if (v === 0) return;
+    const recente = estado.numeros.find((n) => n.corpo === w && n.tempo < 0.25 && Math.sign(n.valor) === Math.sign(v));
+    if (recente) {
+      recente.valor += v;
+      return;
+    }
+    estado.numeros.push({ corpo: w, x: w.x, y: w.y + Worm.ALTURA + 1.1, valor: v, tempo: 0 });
   }
 
   function anunciar(texto, segundos = 2.6) {
@@ -411,6 +432,7 @@ export function createMatch({
       const w = efeito.corpo;
       w.vida -= efeito.dano;
       w.piscar = 0.45;
+      mostrarNumero(w, -efeito.dano);
 
       // Uma explosão perto de quem está pendurado na corda tem de soltá-la
       // primeiro: `Worm.empurrar` força `estado = 'voando'`, mas sem largar
@@ -860,6 +882,7 @@ export function createMatch({
       if (alvo) {
         alvo.vida -= arma.dano;
         alvo.piscar = 0.4;
+        mostrarNumero(alvo, -arma.dano);
         const dx = alvo.x - w.x || w.direcao;
         Worm.empurrar(alvo, Math.sign(dx) * (arma.impulso ?? 0), (arma.impulso ?? 0) * 0.3);
         sfx.ai(panDe(alvo.x)); // feedback imediato de acerto, além do estampido do tiro
@@ -974,6 +997,7 @@ export function createMatch({
       if (queda) {
         w.vida -= queda.dano;
         w.piscar = 0.4;
+        mostrarNumero(w, -queda.dano);
         sfx.ai(panDe(w.x));
       }
       // Passou da linha d'água: some na hora, o resto resolve na fase certa.
@@ -992,6 +1016,13 @@ export function createMatch({
     atualizarCaixas(dt);
     atualizarAviao(dt);
     particles.update(dt);
+
+    for (let i = estado.numeros.length - 1; i >= 0; i -= 1) {
+      const n = estado.numeros[i];
+      n.tempo += dt;
+      n.y += dt * (n.tempo < 0.3 ? 2.2 : 0.6); // salta rápido e depois flutua devagar
+      if (n.tempo > DURACAO_NUMERO) estado.numeros.splice(i, 1);
+    }
 
     for (let i = estado.tracos.length - 1; i >= 0; i -= 1) {
       estado.tracos[i].vida -= dt;
@@ -1254,6 +1285,29 @@ export function createMatch({
 
     for (const p of estado.projeteis) desenharProjetil(ctx, p, camera);
     for (const t of estado.tracos) desenharTraco(ctx, t, camera);
+    for (const n of estado.numeros) desenharNumero(ctx, n);
+  }
+
+  function desenharNumero(ctx, n) {
+    const p = camera.toScreen(n.x, n.y);
+    const tamanho = Math.round(Math.max(15, Math.min(30, camera.scale * 0.9)));
+    // Um "pulo" de escala ao nascer, e some nos últimos 0,5 s.
+    const escala = n.tempo < 0.15 ? 0.6 + (n.tempo / 0.15) * 0.6 : n.tempo < 0.3 ? 1.2 - ((n.tempo - 0.15) / 0.15) * 0.2 : 1;
+    const alfa = Math.max(0, Math.min(1, (DURACAO_NUMERO - n.tempo) / 0.5));
+    const texto = n.valor > 0 ? `+${n.valor}` : String(n.valor);
+
+    ctx.save();
+    ctx.globalAlpha = alfa;
+    ctx.font = `800 ${Math.round(tamanho * escala)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(3, tamanho * 0.18);
+    ctx.strokeStyle = 'rgba(12, 18, 28, 0.85)';
+    ctx.strokeText(texto, p.x, p.y);
+    ctx.fillStyle = n.valor > 0 ? '#7ee06a' : '#ff5a4a';
+    ctx.fillText(texto, p.x, p.y);
+    ctx.restore();
   }
 
   /** O avião do ataque aéreo: uma silhueta simples, virada pro lado que voa. */

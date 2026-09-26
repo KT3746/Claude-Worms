@@ -106,6 +106,8 @@ sozinha.
 - Depois de **10 rodadas** entra a morte súbita: a água sobe a cada turno, e
   **cada vez mais rápido** — no começo dá para subir o morro, mas ninguém
   escapa da maré por muito tempo.
+- Todo dano aparece em **número vermelho** flutuando sobre a minhoca, e toda
+  cura em **verde**.
 - A partir do segundo turno, às vezes uma **caixa de vida** cai de
   paraquedas (derivando com o vento). Qualquer minhoca que encostar nela
   ganha **+25 de vida**, mesmo fora da vez. Uma explosão perto destrói a
