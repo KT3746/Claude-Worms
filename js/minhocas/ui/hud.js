@@ -81,9 +81,11 @@ function desenharBarrasDeEquipe(ctx, partida, l) {
   const x = l.equipes.x;
   let y = l.equipes.y;
 
+  // Caixa de vida pode levar uma equipe acima do total inicial: a escala
+  // acompanha a maior vida atual, senão a barra passaria da borda da caixa.
   const vidaMaxima = Math.max(
     1,
-    ...times.map((t) => t.minhocas.length * 100),
+    ...times.map((t) => Math.max(t.minhocas.length * 100, t.vida)),
   );
 
   for (const time of times) {

@@ -1233,6 +1233,9 @@ export function createMatch({
     terreno.desenhar(ctx, camera);
     desenharAgua(ctx);
 
+    // Antes das minhocas: a caixa nunca cobre a placa de nome nem a seta da vez.
+    for (const c of estado.caixas) desenharCaixa(ctx, c);
+
     for (const time of times) {
       for (const w of time.minhocas) {
         Worm.desenharMinhoca(ctx, w, camera, {
@@ -1243,7 +1246,6 @@ export function createMatch({
     }
 
     for (const c of estado.criaturas) desenharOvelha(ctx, c, camera);
-    for (const c of estado.caixas) desenharCaixa(ctx, c);
 
     if (estado.corda) desenharCorda(ctx);
     else if (podeAgir() && estado.ativa) desenharMira(ctx);
