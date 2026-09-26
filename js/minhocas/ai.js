@@ -19,7 +19,9 @@
  * comum...). A IA nunca troca para essas armas, então elas continuam
  * existindo só para quem joga de verdade.
  *
- * MOVIMENTO: a IA só anda pra fugir de um alvo fora de alcance — nunca pula,
+ * MOVIMENTO: antes de mirar, a IA busca uma caixa de vida pousada ali perto
+ * se o caminho for plano (ver `caixaAlcancavel`). Fora isso, só anda pra
+ * fugir de um alvo fora de alcance — nunca pula,
  * nunca busca cobertura, nunca recua depois de atirar. Quando o melhor tiro
  * achado erra feio E o alvo está longe, ela anda alguns segundos na direção
  * dele antes de mirar (uma vez por turno) e tenta de novo a partir daí; se
@@ -62,6 +64,45 @@ const VELOCIDADE_MIRA = 2.4; // rad/s
 const LIMITE_PONTUACAO_PARA_ANDAR = 8; // m
 const TEMPO_MAX_ANDANDO = 3; // s
 const RESERVA_PARA_ATIRAR = 3; // s de relógio que a caminhada nunca consome
+
+/**
+ * Caixa de vida: a IA só vai buscar uma já pousada, a até este tanto de
+ * distância, e só se o caminho for plano (ver `caminhoSeguro`) — nada de
+ * pular buraco nem descer barranco atrás de 25 de vida.
+ */
+const ALCANCE_CAIXA = 9; // m
+const DESNIVEL_MAX_CAIXA = 1.2; // m entre o chão do caminho e os pés da minhoca
+const TEMPO_MAX_CAIXA = 6; // s
+
+/**
+ * O chão entre `x0` e `x1` fica todo perto da altura `y` e acima da água?
+ * `superficieEm` lê a coluna de cima para baixo, então uma minhoca dentro
+ * de caverna (com teto em cima) também dá "desnível grande" — e fica parada,
+ * que é o seguro.
+ */
+export function caminhoSeguro(terreno, x0, x1, y, nivelAgua) {
+  const passo = x1 > x0 ? 0.4 : -0.4;
+  const n = Math.ceil(Math.abs(x1 - x0) / 0.4);
+  for (let i = 0; i <= n; i += 1) {
+    const x = i === n ? x1 : x0 + passo * i;
+    const chao = terreno.superficieEm(x);
+    if (chao < nivelAgua + 0.5 || Math.abs(chao - y) > DESNIVEL_MAX_CAIXA) return false;
+  }
+  return true;
+}
+
+/** A caixa pousada mais perto que vale a caminhada, ou null. */
+export function caixaAlcancavel(estado, terreno, w) {
+  let melhor = null;
+  for (const c of estado.caixas ?? []) {
+    if (!c.apoiada) continue;
+    const d = Math.abs(c.x - w.x);
+    if (d > ALCANCE_CAIXA || Math.abs(c.y - w.y) > DESNIVEL_MAX_CAIXA) continue;
+    if (melhor && d >= Math.abs(melhor.x - w.x)) continue;
+    if (caminhoSeguro(terreno, w.x, c.x, w.y, estado.nivelAgua)) melhor = c;
+  }
+  return melhor;
+}
 
 /**
  * Quem atirar: o inimigo vivo mais perto, com uma pequena preferência por
@@ -271,6 +312,12 @@ export function createAiController(partida) {
   // continua fora de alcance mesmo depois de andar ficaria andando pra
   // sempre e nunca chegaria a atirar.
   let jaTentouAproximar = false;
+  // Mesma ideia para a caixa: uma ida por turno, com teto de tempo.
+  let jaBuscouCaixa = false;
+  let caixaAlvo = null;
+  let tempoBuscando = 0;
+  let ultimoX = 0;
+  let tempoParado = 0;
 
   function equipeDaVez() {
     if (!estado.ativa) return null;
@@ -282,6 +329,8 @@ export function createAiController(partida) {
     plano = null;
     tempoAproximando = 0;
     jaTentouAproximar = false;
+    jaBuscouCaixa = false;
+    caixaAlvo = null;
   }
 
   function update(dt) {
@@ -301,6 +350,37 @@ export function createAiController(partida) {
     if (turnoPlanejado !== turnos.turno) {
       turnoPlanejado = turnos.turno;
       reiniciar();
+    }
+
+    if (fase === 'ocioso' && !jaBuscouCaixa) {
+      jaBuscouCaixa = true;
+      const w = estado.ativa;
+      caixaAlvo = w && w.estado !== 'voando' ? caixaAlcancavel(estado, partida.terreno, w) : null;
+      if (caixaAlvo) {
+        tempoBuscando = 0;
+        tempoParado = 0;
+        ultimoX = w.x;
+        fase = 'caixa';
+        return;
+      }
+    }
+
+    if (fase === 'caixa') {
+      const w = estado.ativa;
+      const tempoMax = Math.min(TEMPO_MAX_CAIXA, Math.max(0, turnos.relogio - RESERVA_PARA_ATIRAR - 2));
+      // Pegou (a caixa saiu da lista), empacou numa parede ou o tempo acabou:
+      // volta a planejar o tiro de onde estiver.
+      if (!w?.vivo || !estado.caixas.includes(caixaAlvo) || tempoBuscando >= tempoMax || tempoParado > 0.6) {
+        fase = 'ocioso';
+        caixaAlvo = null;
+        return;
+      }
+      comandos.andar(caixaAlvo.x > w.x ? 1 : -1, dt);
+      tempoBuscando += dt;
+      if (Math.abs(w.x - ultimoX) < 0.001) tempoParado += dt;
+      else tempoParado = 0;
+      ultimoX = w.x;
+      return;
     }
 
     if (fase === 'ocioso') {

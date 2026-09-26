@@ -204,6 +204,9 @@ não acertar toda vez. Anda alguns segundos para se aproximar quando o melhor
 tiro encontrado erraria feio e o alvo está longe — o suficiente para não
 travar contra um adversário fora de alcance, não para jogar com tática.
 
+Antes de mirar, se houver uma **caixa de vida pousada** a até 9 m, num
+caminho plano (sem buraco, água nem degrau alto), ela vai buscar.
+
 **O que ela ainda não faz:** corda ninja, jetpack, teleporte, ovelha, míssil
 guiado, minas, dinamite, viga e ataque aéreo — só o arsenal com trajetória
 calculável. Não pula, não recua depois de atirar, não protege uma minhoca

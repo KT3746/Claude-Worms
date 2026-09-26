@@ -261,7 +261,9 @@ test('createAiController joga uma partida inteira sozinho, sem travar', () => {
   const ai = createAiController(partida);
 
   let passos = 0;
-  const MAX_PASSOS = 120 * 300; // ~300 s simulados — folga sobre o observado (~170 s, semente 3)
+  // ~600 s simulados — folga sobre o observado na semente 3 (~320 s; a IA
+  // pega duas caixas de vida no caminho, o que estica a partida).
+  const MAX_PASSOS = 120 * 600;
   while (partida.fase !== FASE.FIM && passos < MAX_PASSOS) {
     ai.update(DT_FISICA);
     partida.update(DT_FISICA);
@@ -319,4 +321,60 @@ test('createAiController nunca mexe na minhoca de um time humano', () => {
   const humano = partida.times[0].minhocas[0];
   assert.equal(humano.angulo, Math.PI / 4, 'ninguém deveria ter tocado na mira do time humano');
   assert.equal(partida.estado.projeteis.length, 0, 'e nada deveria ter sido disparado por ele');
+});
+
+// ------------------------------------------------ caixas de vida
+
+import { caminhoSeguro, caixaAlcancavel } from '../js/minhocas/ai.js';
+
+function terrenoDeColunas(alturaEm) {
+  return { largura: 100, altura: 40, superficieEm: alturaEm, solidoEm: (x, y) => y <= alturaEm(x) };
+}
+
+test('caminhoSeguro recusa água, buraco e degrau alto no trajeto', () => {
+  const plano = terrenoDeColunas(() => 10);
+  assert.ok(caminhoSeguro(plano, 20, 28, 10, 2));
+  const buraco = terrenoDeColunas((x) => (x > 23 && x < 24 ? 4 : 10));
+  assert.ok(!caminhoSeguro(buraco, 20, 28, 10, 2));
+  const agua = terrenoDeColunas((x) => (x > 23 && x < 25 ? 1 : 10));
+  assert.ok(!caminhoSeguro(agua, 20, 28, 10, 2));
+  const parede = terrenoDeColunas((x) => (x > 25 ? 13 : 10));
+  assert.ok(!caminhoSeguro(parede, 28, 20, 10, 2) && !caminhoSeguro(parede, 20, 28, 10, 2));
+});
+
+test('caixaAlcancavel escolhe a pousada mais perto e ignora as que estão no ar ou longe', () => {
+  const t = terrenoDeColunas(() => 10);
+  const w = { x: 20, y: 10 };
+  const caixas = [
+    { x: 26, y: 10, apoiada: true },
+    { x: 17, y: 10, apoiada: true },
+    { x: 21, y: 18, apoiada: false },
+    { x: 40, y: 10, apoiada: true },
+  ];
+  assert.equal(caixaAlcancavel({ caixas, nivelAgua: 2 }, t, w), caixas[1]);
+  assert.equal(caixaAlcancavel({ caixas: [caixas[2], caixas[3]], nivelAgua: 2 }, t, w), null);
+});
+
+test('no jogo, a IA anda até a caixa pousada ao lado antes de atirar', () => {
+  const partida = partidaIA({
+    equipes: [{ nome: 'A', minhocas: 2, ia: true }, { nome: 'B', minhocas: 2, ia: true }],
+  });
+  const ia = createAiController(partida);
+  // Até a primeira minhoca de IA poder agir.
+  for (let i = 0; i < 120 * 3 && partida.fase !== FASE.JOGANDO; i += 1) partida.update(1 / 120);
+  const w = partida.estado.ativa;
+  // Procura um lado plano e seguro para largar a caixa a ~3 m.
+  const paraOCentro = w.x < partida.terreno.largura / 2 ? 1 : -1;
+  const lado = [paraOCentro, -paraOCentro].find((d) => caminhoSeguro(partida.terreno, w.x, w.x + d * 3, w.y, partida.estado.nivelAgua));
+  assert.ok(lado, 'semente de teste sem chão plano ao lado da minhoca');
+  const cx = w.x + lado * 3;
+  const caixa = { x: cx, y: partida.terreno.superficieEm(cx), vy: 0, valor: 25, paraquedas: false, apoiada: true, tempo: 0 };
+  partida.estado.caixas.push(caixa);
+  const vidaAntes = w.vida;
+  for (let i = 0; i < 120 * 8 && partida.estado.caixas.includes(caixa); i += 1) {
+    ia.update(1 / 120);
+    partida.update(1 / 120);
+  }
+  assert.ok(!partida.estado.caixas.includes(caixa), 'a IA não pegou a caixa');
+  assert.equal(w.vida, vidaAntes + 25);
 });
