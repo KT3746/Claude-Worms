@@ -18,6 +18,8 @@ export function createParticles() {
     color: '#fff',
     gravity: 6,
     drag: 1.2,
+    aditivo: false,
+    encolhe: false,
   }));
   let cursor = 0;
 
@@ -43,6 +45,11 @@ export function createParticles() {
     p.color = o.color ?? '#ffffff';
     p.gravity = o.gravity ?? 6;
     p.drag = o.drag ?? 1.2;
+    // `aditivo`: soma luz em vez de pintar por cima (fogo, faíscas) — as
+    // partículas se sobrepondo ficam mais claras, como luz de verdade.
+    // `encolhe`: o raio diminui junto com a vida (brasas se apagando).
+    p.aditivo = o.aditivo === true;
+    p.encolhe = o.encolhe === true;
     return p;
   }
 
@@ -67,17 +74,24 @@ export function createParticles() {
     },
 
     draw(ctx, camera) {
-      for (const p of pool) {
-        if (!p.active) continue;
-        const alpha = Math.max(0, Math.min(1, p.life / p.maxLife));
-        const screen = camera.toScreen(p.x, p.y);
-        const radius = Math.max(0.6, p.size * camera.scale);
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
-        ctx.fill();
+      // Duas passadas: as normais (fumaça, terra) e depois as de luz por
+      // cima, com mistura aditiva — trocar o modo por partícula custaria caro.
+      for (const aditivas of [false, true]) {
+        if (aditivas) ctx.globalCompositeOperation = 'lighter';
+        for (const p of pool) {
+          if (!p.active || p.aditivo !== aditivas) continue;
+          const vida = p.life / p.maxLife;
+          const alpha = Math.max(0, Math.min(1, vida));
+          const screen = camera.toScreen(p.x, p.y);
+          const radius = Math.max(0.6, p.size * camera.scale * (p.encolhe ? 0.3 + vida * 0.7 : 1));
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
+      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
     },
 

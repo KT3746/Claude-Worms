@@ -203,6 +203,8 @@ function iniciarPartida(config) {
       zoom: estado.zoom,
     });
     ia = createAiController(estado.partida);
+    sfx.ambienteIniciar();
+    sfx.ambienteAbafar(false);
     estado.modo = 'jogando';
     screens.hide();
     pauseButton.hidden = false;
@@ -213,6 +215,8 @@ function iniciarPartida(config) {
 function pausar() {
   if (estado.modo !== 'jogando') return;
   estado.modo = 'pausado';
+  sfx.ambienteAbafar(true);
+  sfx.cargaParar();
   pauseButton.hidden = true;
   sincronizarControles();
   screens.pause();
@@ -221,6 +225,7 @@ function pausar() {
 function retomar() {
   if (estado.modo !== 'pausado') return;
   estado.modo = 'jogando';
+  sfx.ambienteAbafar(false);
   pauseButton.hidden = false;
   screens.hide();
   sincronizarControles();
@@ -229,6 +234,7 @@ function retomar() {
 function aoMenu() {
   estado.modo = 'menu';
   estado.partida = null;
+  sfx.ambienteParar();
   sincronizarControles();
   particles.clear();
   camera.setBounds(null);
@@ -239,6 +245,8 @@ function aoMenu() {
 function terminar() {
   const partida = estado.partida;
   estado.modo = 'fim';
+  sfx.ambienteAbafar(true);
+  sfx.cargaParar();
   pauseButton.hidden = true;
   sincronizarControles();
   // Sem time em pé (todos afogados no mesmo turno, por exemplo) não é uma

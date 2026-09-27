@@ -113,6 +113,15 @@ sozinha.
   ganha **+25 de vida**, mesmo fora da vez. Uma explosão perto destrói a
   caixa, e a que cai na água se perde. No máximo 3 no mapa ao mesmo tempo.
 
+### Som
+
+Tudo sintetizado na hora com WebAudio, sem nenhum arquivo de áudio. Cada
+efeito é montado em camadas (estalo, estrondo grave, corpo, cauda, detritos)
+e passa por um reverb gerado por código e um compressor na saída. De fundo
+tocam vento (mais forte e mais de lado conforme o vento do turno) e mar.
+Carregar a força do tiro faz um zumbido que sobe, e os últimos 5 segundos do
+turno tocam um tique.
+
 ### Semente do mapa
 
 Todo mapa nasce de uma semente. Digitar a mesma semente no menu gera

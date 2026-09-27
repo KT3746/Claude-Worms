@@ -78,6 +78,9 @@ const PAVIO_PADRAO = armaPorId('granada').pavio;
 const CHANCE_CAIXA = 0.35;
 const MAX_CAIXAS = 3;
 
+/** Quanto dura o anel da onda de choque de uma explosão, em segundos. */
+const DURACAO_ONDA = 0.35;
+
 /** Quanto tempo o número de dano/cura fica flutuando, em segundos. */
 const DURACAO_NUMERO = 1.6;
 
@@ -175,6 +178,8 @@ export function createMatch({
     turnosJogados: 0,
     tracos: [],     // traços visuais de tiros instantâneos (escopeta, sniper)
     numeros: [],    // dano/cura flutuando sobre a minhoca — ver `mostrarNumero`
+    ondas: [],      // anéis de onda de choque das explosões — ver `detonar`
+    clarao: 0,      // 0..1, clarão da tela depois de uma explosão grande
     vento: 0,
     nivelAgua: terreno.nivelAgua,
     ativa: null,
@@ -228,6 +233,8 @@ export function createMatch({
         estado.arma = ARMAS[0];
         estado.pavio = PAVIO_PADRAO;
         estado.vento = Math.round(rng.range(-9, 9) * 10) / 10;
+        sfx.ambienteVento(estado.vento);
+        sfx.cargaParar();
         estado.ativa = proximaMinhoca();
         estado.panOffsetX = 0; // cada turno começa centrado — nenhum passeio de câmera sobra do turno anterior
         estado.aviao = null; // segurança: não devia sobrar de um turno pro outro, mas evita um avião fantasma
@@ -240,6 +247,7 @@ export function createMatch({
       },
       aoDisparar() {
         estado.carregando = false;
+        sfx.cargaParar();
       },
       aoResolver: resolverConsequencias,
       aoMorteSubita() {
@@ -280,6 +288,7 @@ export function createMatch({
     const pouso = Caixa.sortearPouso(terreno, estado.nivelAgua, rngCaixas);
     if (!pouso) return;
     estado.caixas.push(Caixa.createCrate(pouso));
+    sfx.paraquedas(panDe(pouso.x));
     anunciar('Caixa de vida caindo!', 1.8);
   }
 
@@ -373,6 +382,7 @@ export function createMatch({
       if (w.vida <= 0) {
         w.vivo = false;
         w.vida = 0;
+        sfx.morte(panDe(w.x));
         detonar(w.x, w.y + Worm.ALTURA * 0.4, EXPLOSAO_DE_MORTE);
         anunciar(`${w.nome} explodiu.`);
         houve = true;
@@ -475,6 +485,45 @@ export function createMatch({
         drag: 1.6,
       });
     }
+
+    // Bola de fogo: núcleo claro e chamas laranja com mistura aditiva, e
+    // brasas que voam longe e se apagam encolhendo.
+    const fogo = Math.round(10 + arma.raio * 8);
+    for (let i = 0; i < fogo; i += 1) {
+      const a = rng.range(0, Math.PI * 2);
+      const v = rng.range(0.5, 2 + arma.raio);
+      particles.spawn({
+        x: x + Math.cos(a) * arma.raio * 0.2,
+        y: y + Math.sin(a) * arma.raio * 0.2,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v + 1,
+        life: rng.range(0.18, 0.45),
+        size: rng.range(0.2, 0.25 + arma.raio * 0.18),
+        color: i % 5 === 0 ? '#ffe7a0' : i % 5 < 3 ? '#ff9a3c' : '#e8501f',
+        gravity: -2,
+        drag: 3,
+        aditivo: true,
+        encolhe: true,
+      });
+    }
+    for (let i = 0; i < 8 + arma.raio * 4; i += 1) {
+      const a = rng.range(0, Math.PI);
+      const v = rng.range(4, 7 + arma.raio * 2);
+      particles.spawn({
+        x, y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v,
+        life: rng.range(0.5, 1.2),
+        size: rng.range(0.04, 0.08),
+        color: '#ffcf6b',
+        gravity: 9,
+        drag: 0.4,
+        aditivo: true,
+        encolhe: true,
+      });
+    }
+    estado.ondas.push({ x, y, raioMax: arma.raio * 2.2, tempo: 0 });
+    if (estado.motionEnabled) estado.clarao = Math.min(0.6, estado.clarao + arma.raio * 0.12);
 
     camera.addShake(Math.min(1, arma.raio * 0.22));
     sfx.explosao(arma.raio, panDe(x));
@@ -703,6 +752,7 @@ export function createMatch({
       }
       estado.carregando = true;
       estado.carga = 0;
+      sfx.cargaIniciar();
     },
 
     /** Solta e dispara com a força acumulada. */
@@ -812,6 +862,7 @@ export function createMatch({
     const arma = estado.arma;
 
     estado.carregando = false;
+    sfx.cargaParar();
 
     if (arma.tipo === 'hitscan') {
       disparoHitscan(w, arma);
@@ -1008,6 +1059,7 @@ export function createMatch({
 
     if (estado.carregando) {
       estado.carga = Math.min(1, estado.carga + dt * 1.35);
+      sfx.cargaNivel(estado.carga);
       if (estado.carga >= 1) soltar();
     }
 
@@ -1016,6 +1068,12 @@ export function createMatch({
     atualizarCaixas(dt);
     atualizarAviao(dt);
     particles.update(dt);
+
+    estado.clarao = Math.max(0, estado.clarao - dt * 4);
+    for (let i = estado.ondas.length - 1; i >= 0; i -= 1) {
+      estado.ondas[i].tempo += dt;
+      if (estado.ondas[i].tempo > DURACAO_ONDA) estado.ondas.splice(i, 1);
+    }
 
     for (let i = estado.numeros.length - 1; i >= 0; i -= 1) {
       const n = estado.numeros[i];
@@ -1046,7 +1104,13 @@ export function createMatch({
       turnos.forcarFimDeTurno();
     }
 
+    const relogioAntes = turnos.relogio;
     turnos.update(dt, contexto());
+    // Tique nos últimos 5 s do turno — só enquanto dá pra agir, e um por segundo inteiro.
+    if (turnos.fase === FASE.JOGANDO && turnos.relogio <= 5 && turnos.relogio > 0 &&
+        Math.ceil(turnos.relogio) < Math.ceil(relogioAntes)) {
+      sfx.relogio(Math.ceil(turnos.relogio));
+    }
     seguirCamera(dt);
     camera.update(dt);
   }
@@ -1285,7 +1349,31 @@ export function createMatch({
 
     for (const p of estado.projeteis) desenharProjetil(ctx, p, camera);
     for (const t of estado.tracos) desenharTraco(ctx, t, camera);
+    for (const o of estado.ondas) desenharOnda(ctx, o);
     for (const n of estado.numeros) desenharNumero(ctx, n);
+
+    if (estado.clarao > 0.01) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = `rgba(255, 196, 120, ${estado.clarao * 0.35})`;
+      ctx.fillRect(0, 0, camera.width, camera.height);
+      ctx.restore();
+    }
+  }
+
+  /** Anel da onda de choque: abre rápido (desacelerando) e some. */
+  function desenharOnda(ctx, o) {
+    const k = o.tempo / DURACAO_ONDA;
+    const r = o.raioMax * (1 - (1 - k) * (1 - k)) * camera.scale;
+    const p = camera.toScreen(o.x, o.y);
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - k) * 0.7;
+    ctx.strokeStyle = '#fff4dc';
+    ctx.lineWidth = Math.max(1.5, camera.scale * 0.18 * (1 - k));
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, Math.max(1, r), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function desenharNumero(ctx, n) {
