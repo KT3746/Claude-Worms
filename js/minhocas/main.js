@@ -202,7 +202,7 @@ function iniciarPartida(config) {
       tempoTurno: config.tempoTurno,
       zoom: estado.zoom,
     });
-    ia = createAiController(estado.partida);
+    ia = createAiController(estado.partida, { dificuldade: config.dificuldadeIa });
     sfx.ambienteIniciar();
     sfx.ambienteAbafar(false);
     estado.modo = 'jogando';

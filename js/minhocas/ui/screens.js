@@ -21,6 +21,7 @@ export function createScreens(root, actions) {
     // como adversário de IA, porque "jogar contra si mesmo" não é o pedido
     // comum de quem abre o menu sozinho.
     controladores: ['humano', 'ia', 'ia', 'ia'],
+    dificuldadeIa: 'normal',
   };
 
   function clear() {
@@ -78,6 +79,9 @@ export function createScreens(root, actions) {
       );
 
       box.append(controladores(config));
+      box.append(seletor('Dificuldade da IA', ['facil', 'normal', 'dificil'], config.dificuldadeIa, (v) => {
+        config.dificuldadeIa = v;
+      }, (v) => ({ facil: 'Fácil', normal: 'Normal', dificil: 'Difícil' })[v]));
 
       const campo = el('div', 'campo');
       const rotulo = el('label', 'campo-rotulo', 'Semente do mapa (opcional)');

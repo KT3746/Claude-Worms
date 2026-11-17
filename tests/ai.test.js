@@ -19,6 +19,7 @@ import {
   buscarTiroArco,
   planejarTurno,
   createAiController,
+  DIFICULDADES,
 } from '../js/minhocas/ai.js';
 import { createMatch } from '../js/minhocas/match.js';
 import { armaPorId } from '../js/minhocas/weapons.js';
@@ -377,4 +378,34 @@ test('no jogo, a IA anda até a caixa pousada ao lado antes de atirar', () => {
   }
   assert.ok(!partida.estado.caixas.includes(caixa), 'a IA não pegou a caixa');
   assert.equal(w.vida, vidaAntes + 25);
+});
+
+// ---------------------------------------------------------------- dificuldades
+
+function desvioDosAngulos(dificuldade, terreno) {
+  const atacante = worm(0, 1, { equipe: 0 });
+  const alvo = worm(20, 1, { equipe: 1 });
+  const partida = partidaFalsa({ atacante, alvo, terreno });
+  const angulos = [];
+  for (let i = 0; i < 40; i += 1) angulos.push(planejarTurno(partida, dificuldade).angulo);
+  const media = angulos.reduce((a, b) => a + b, 0) / angulos.length;
+  return Math.sqrt(angulos.reduce((a, b) => a + (b - media) ** 2, 0) / angulos.length);
+}
+
+test('dificuldade: a IA fácil erra a mira bem mais que a difícil', () => {
+  const terreno = terrenoDeTeste({ obstaculo: { x0: 8, x1: 9, altura: 5 } }); // força arma de arco
+  const facil = desvioDosAngulos(DIFICULDADES.facil, terreno);
+  const dificil = desvioDosAngulos(DIFICULDADES.dificil, terreno);
+  assert.ok(facil > dificil * 4, `fácil ${facil.toFixed(4)} rad, difícil ${dificil.toFixed(4)} rad`);
+});
+
+test('dificuldade: no fácil até a sniper/escopeta com linha livre erra um pouco', () => {
+  const desvio = desvioDosAngulos(DIFICULDADES.facil, terrenoDeTeste());
+  assert.ok(desvio > 0.01, `desvio ${desvio.toFixed(4)} rad`);
+});
+
+test('dificuldade: o normal é o padrão e joga igual a antes (mesma semente, mesmo plano)', () => {
+  const terreno = terrenoDeTeste({ obstaculo: { x0: 8, x1: 9, altura: 5 } });
+  const montar = () => partidaFalsa({ atacante: worm(0, 1, { equipe: 0 }), alvo: worm(20, 1, { equipe: 1 }), terreno });
+  assert.deepEqual(planejarTurno(montar()), planejarTurno(montar(), DIFICULDADES.normal));
 });

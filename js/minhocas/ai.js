@@ -52,6 +52,19 @@ const TEMPO_MAX_BUSCA = 5;
 const ERRO_ANGULO = 0.035; // rad, ~2°
 const ERRO_POTENCIA = 0.035; // fração da força máxima
 
+/**
+ * Dificuldades escolhidas no menu. Só muda o erro de mira: a busca do melhor
+ * tiro é a mesma. O "normal" usa exatamente os valores de antes (e não gasta
+ * sorteios a mais), então uma semente fixa continua jogando a mesma partida.
+ * No fácil até os hitscans erram um pouco — senão bastaria ter linha livre
+ * para a sniper acertar sempre.
+ */
+export const DIFICULDADES = {
+  facil: { erroAngulo: 0.12, erroPotencia: 0.12, erroInstantaneo: 0.06 },
+  normal: { erroAngulo: ERRO_ANGULO, erroPotencia: ERRO_POTENCIA, erroInstantaneo: 0 },
+  dificil: { erroAngulo: 0.01, erroPotencia: 0.01, erroInstantaneo: 0 },
+};
+
 /** Quanto a mira gira por segundo enquanto a IA ajusta a pontaria. */
 const VELOCIDADE_MIRA = 2.4; // rad/s
 
@@ -233,7 +246,7 @@ export function buscarTiroArco({ atacante, arma, alvoPos, ambiente, terreno, tod
  * `null` só quando não há ninguém para mirar — não deveria acontecer com a
  * partida em andamento, mas fica seguro em vez de estourar.
  */
-export function planejarTurno(partida) {
+export function planejarTurno(partida, dificuldade = DIFICULDADES.normal) {
   const { estado, terreno, todas, rng } = partida;
   const atacante = estado.ativa;
   const alvo = escolherAlvo(todas, atacante);
@@ -276,8 +289,10 @@ export function planejarTurno(partida) {
 
   let { angulo, poder } = escolhido;
   if (!escolhido.instantaneo) {
-    angulo += rng.range(-ERRO_ANGULO, ERRO_ANGULO);
-    poder = Math.max(0.12, Math.min(1, poder + rng.range(-ERRO_POTENCIA, ERRO_POTENCIA)));
+    angulo += rng.range(-dificuldade.erroAngulo, dificuldade.erroAngulo);
+    poder = Math.max(0.12, Math.min(1, poder + rng.range(-dificuldade.erroPotencia, dificuldade.erroPotencia)));
+  } else if (dificuldade.erroInstantaneo > 0) {
+    angulo += rng.range(-dificuldade.erroInstantaneo, dificuldade.erroInstantaneo);
   }
 
   return {
@@ -300,8 +315,9 @@ export function planejarTurno(partida) {
  * um time de IA, decide e executa — parado no meio do turno de um humano,
  * ele não faz nada.
  */
-export function createAiController(partida) {
+export function createAiController(partida, { dificuldade = 'normal' } = {}) {
   const { estado, turnos, comandos, rng } = partida;
+  const dif = DIFICULDADES[dificuldade] || DIFICULDADES.normal;
 
   let turnoPlanejado = -1;
   let fase = 'ocioso'; // 'ocioso' | 'aproximando' | 'mirando' | 'carregando' | 'feito'
@@ -384,7 +400,7 @@ export function createAiController(partida) {
     }
 
     if (fase === 'ocioso') {
-      plano = planejarTurno(partida);
+      plano = planejarTurno(partida, dif);
       if (!plano) return; // sem alvo por ora — tenta de novo no próximo quadro
 
       // O melhor tiro achado ainda erra feio, e o alvo está longe o

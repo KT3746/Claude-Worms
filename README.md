@@ -15,7 +15,8 @@ Sirva a pasta do repositório (o jogo usa módulos ES):
 python3 -m http.server 8000   # depois: http://localhost:8000
 ```
 
-Dois jogadores no mesmo aparelho. Cada um controla a minhoca da sua equipe
+Dois jogadores no mesmo aparelho. Ou jogue contra o computador, em três dificuldades
+(Fácil, Normal, Difícil), escolhidas no menu. Cada um controla a minhoca da sua equipe
 quando chega a vez dela.
 
 Serve teclado e dedo, e a escolha não é sua: quem manda é o último ponteiro
